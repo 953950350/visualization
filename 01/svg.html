@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3-hierarchy@3"></script>
+    <style>
+        h1 {
+          position: absolute;
+          width: 800px;
+          text-align: center;
+        }
+      </style>
+  </head>
+  <body>
+    <h1 id="title"></h1>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      version="1.1"
+      width="800"
+      height="800"
+      viewBox="0 0 1600 1600"
+    ></svg>
+
+    <script>
+      const svgroot = document.querySelector("svg");
+      let activeTarget = null;
+      svgroot.addEventListener("mousemove", function (e) {
+        let target = e.target;
+        if (target.nodeName == "text") {
+          target = target.previousSibling;
+        }
+        if (activeTarget !== target) {
+          if (activeTarget)
+            activeTarget.setAttribute("fill", "rgba(0,0,0,0.2)");
+        }
+        target.setAttribute("fill", "rgba(0, 128, 0, 0.1)");
+        titleEle.textContent = getTitle(target);
+        activeTarget = target;
+      });
+      const titleEle = document.querySelector('#title');
+
+      function getTitle(target) {
+          const name = target.getAttribute("data-name");
+          if (target.parentNode && target.parentNode.nodeName == "g") {
+              const parentName = target.parentNode.getAttribute("data-name")
+              return `${parentName}-${name}`
+          }
+          return name;
+      }
+
+      (async function () {
+        const url = "https://s5.ssl.qhres2.com/static/b0695e2dd30daa64.json";
+        const data = await (await fetch(url)).json();
+        const regions = d3
+          .hierarchy(data)
+          .sum((d) => 1)
+          .sort((a, b) => b.value - a.value);
+        const pack = d3.pack().size([1600, 1600]).padding(3);
+        const root = pack(regions);
+
+        function draw(
+          parent,
+          node,
+          { fillStyle = "rgba(0, 0, 0, 0.2)", textColor = "white" } = {}
+        ) {
+          const children = node.children;
+          const { x, y, r } = node;
+          const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "circle"
+          );
+          circle.setAttribute("cx", x);
+          circle.setAttribute("cy", y);
+          circle.setAttribute("r", r);
+          circle.setAttribute("fill", fillStyle);
+          circle.setAttribute("data-name", node.data.name);
+
+          parent.appendChild(circle);
+          if (children) {
+            const group = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "g"
+            );
+            for (let i = 0; i < children.length; i++) {
+              draw(group, children[i], { fillStyle, textColor });
+            }
+            group.setAttribute("data-name", node.data.name)
+            parent.appendChild(group);
+          } else {
+            const text = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "text"
+            );
+            text.setAttribute("fill", textColor);
+            text.setAttribute("font-family", "Arial");
+            text.setAttribute("font-size", "1.5rem");
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("x", x);
+            text.setAttribute("y", y);
+            const name = node.data.name;
+            text.textContent = name;
+            parent.appendChild(text);
+          }
+        }
+        draw(svgroot, root);
+      })();
+    </script>
+  </body>
+</html>
