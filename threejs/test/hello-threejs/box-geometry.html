@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- <div>123456</div> -->
+    <script type="text/javascript" src="../../lib/three.js"></script>
+    <script>
+        // 创建场景
+        const scene = new THREE.Scene();
+        // 创建相机，透视相机
+        // 视野角度，长宽比，近截面，远截面
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5);
+
+        // 渲染器
+        const renderer = new THREE.WebGLRenderer();
+        // 设置渲染器尺寸
+
+        const tanFOV = Math.tan(((Math.PI / 180) * camera.fov / 2));
+        let windowHeight = window.innerHeight;
+        
+        window.addEventListener("resize", () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            // 当窗口大小改变时需要重设摄像机的视野角度。
+            camera.fov = (360 / Math.PI ) * Math.atan( tanFOV * ( window.innerHeight / windowHeight));
+            camera.updateProjectionMatrix();
+            camera.lookAt( scene.position );
+
+            renderer.setSize( window.innerWidth, window.innerHeight);
+            renderer.render(scene, camera)
+        })
+        document.body.appendChild( renderer.domElement );
+
+                
+        // 创建一个立方体
+        const geometry = new THREE.BoxGeometry();
+        // 素材
+        const meterial = new THREE.MeshBasicMaterial( { color: 00100000 })
+        // 将素材应用到盒子上
+        const cube = new THREE.Mesh(geometry, meterial);
+        // 再场景中添加物体
+        scene.add( cube );
+
+        camera.position.z = 5;
+
+        function animate() {
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            requestAnimationFrame( animate );
+            renderer.render(scene, camera);
+        }
+        animate()
+    </script>
+</body>
+</html>
