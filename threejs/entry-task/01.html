@@ -24,6 +24,7 @@
       import { OrbitControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
       import { LightProbeHelper } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/helpers/LightProbeHelper.js";
       import { LightProbeGenerator } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/lights/LightProbeGenerator.js";
+      import { TransformControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/TransformControls.js";
       function main() {
         const canvas = document.getElementById("canvas");
 
@@ -39,7 +40,7 @@
         const near = 1;
         const far = 1000;
         const camera = new THREE.PerspectiveCamera(fv, aspect, near, far);
-        camera.position.z = 2;
+        camera.position.z = 10;
 
         {
           const color = 0xffffff;
@@ -57,9 +58,9 @@
           scene.add(light);
         }
 
-        const boxWidth = 0.5;
-        const boxHeight = 0.5;
-        const boxDepth = 0.5;
+        const boxWidth = 2;
+        const boxHeight = 1;
+        const boxDepth = 2;
 
         const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
         const edges = new THREE.EdgesGeometry(geometry);
@@ -70,21 +71,86 @@
         );
         controls.minDistance = 2;
         controls.maxDistance = 50;
-        controls.enablePan = false;
+        // controls.enablePan = false;
+        controls.setAngle = function (phi, theta, distance) {
+          const r =
+            distance || controls.object.position.distanceTo(controls.target);
 
-        function makeInstance(geometry, color, x) {
-          const material = new THREE.LineBasicMaterial({ color, alphaTest: 0.5 });
+          const x =
+            r * Math.cos(phi - Math.PI / 2) * Math.sin(theta) +
+            controls.target.x;
+          const y = r * Math.sin(phi + Math.PI / 2) + controls.target.y;
+          const z =
+            r * Math.cos(phi - Math.PI / 2) * Math.cos(theta) +
+            controls.target.z;
+
+          controls.object.position.set(x, y, z);
+          controls.object.lookAt(controls.target);
+        };
+
+        const transformControls = new TransformControls(
+          camera,
+          renderer.domElement
+        );
+        transformControls.addEventListener("change", () =>
+          renderer.render(scene, camera)
+        );
+        scene.add(transformControls);
+        transformControls.setMode("rotate");
+
+        transformControls.showX = false;
+        transformControls.showY = false;
+        transformControls.showZ = false;
+
+        console.log(transformControls.getMode(), '--------getMode----------')
+
+        transformControls.addEventListener("mouseDown", (evt) => {
+            controls.enabled = false;
+        });
+
+        transformControls.addEventListener("mouseUp", (evt) => {
+            controls.enabled = true;
+        });
+
+        function makeInstance(geometry, color, x, y, z) {
+          const material = new THREE.LineBasicMaterial({
+            color,
+            alphaTest: 0.5,
+          });
 
           const cube = new THREE.LineSegments(geometry, material);
 
           scene.add(cube);
+          transformControls.attach(cube);
 
           cube.position.x = x;
+          cube.position.y = y;
+          cube.position.z = z;
+
+          cube.scale.x = 2.2501723932241764;
+          cube.scale.y = 3.830514568623285;
+          cube.scale.z = 2.8923755180835724;
+          controls.target = new THREE.Vector3(x, y, z);
+          controls.update();
+
+          cube.rotation.x = 0;
+          cube.rotation.y = 0;
+          cube.rotation.z = 0;
 
           return cube;
         }
 
-        makeInstance(edges, 0x44aa88, 0);
+        const dir = new THREE.Vector3(0, 1, 0);
+        dir.normalize();
+        const origin = new THREE.Vector3(0, 0, 0);
+        const length = 3;
+        const hex = 0xffff00;
+        const headLength = 0.5;
+        const headWidth = 0.2;
+        const arrowHelper = new THREE.AxesHelper(5);
+        scene.add(arrowHelper);
+
+        makeInstance(edges, 0x44aa88, 0, 0, 0);
 
         renderer.render(scene, camera);
 
@@ -109,7 +175,6 @@
             camera.updateProjectionMatrix();
           }
         });
-
       }
       window.addEventListener("load", () => {
         main();
