@@ -35,51 +35,51 @@
       const gui = new dat.GUI();
 
       const data = [
-        {
-          position: {
-            x: -8.400349855422974,
-            y: 1.981928288936615,
-            z: -1.0848441570997238,
-          },
-          scale: {
-            x: 2.1843811464309697,
-            y: 5.634169597625732,
-            z: 1.470538069009781,
-          },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "1",
-        },
-        {
-          position: {
-            x: 5.58377742767334,
-            y: -0.4827409386634829,
-            z: -1.0303291976451874,
-          },
-          scale: {
-            x: 2.0008632135391236,
-            y: 5.4653849792480464,
-            z: 1.5667174649238587,
-          },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "2",
-        },
-        {
-          position: {
-            x: 5.601998686790466,
-            y: 2.34384936094284,
-            z: -0.5936105251312256,
-          },
-          scale: {
-            x: 2.0997334909439083,
-            y: 5.970669527053833,
-            z: 2.4680173587799072,
-          },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "3",
-        },
+        // {
+        //   position: {
+        //     x: -8.400349855422974,
+        //     y: 1.981928288936615,
+        //     z: -1.0848441570997238,
+        //   },
+        //   scale: {
+        //     x: 2.1843811464309697,
+        //     y: 5.634169597625732,
+        //     z: 1.470538069009781,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "1",
+        // },
+        // {
+        //   position: {
+        //     x: 5.58377742767334,
+        //     y: -0.4827409386634829,
+        //     z: -1.0303291976451874,
+        //   },
+        //   scale: {
+        //     x: 2.0008632135391236,
+        //     y: 5.4653849792480464,
+        //     z: 1.5667174649238587,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "2",
+        // },
+        // {
+        //   position: {
+        //     x: 5.601998686790466,
+        //     y: 2.34384936094284,
+        //     z: -0.5936105251312256,
+        //   },
+        //   scale: {
+        //     x: 2.0997334909439083,
+        //     y: 5.970669527053833,
+        //     z: 2.4680173587799072,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "3",
+        // },
         {
           position: {
             x: 3.4776990137048744,
@@ -170,6 +170,8 @@
 
           const cube = new THREE.LineSegments(geometry, material);
 
+          
+
           scene.add(cube);
 
           const { position, scale, rotation } = location;
@@ -185,6 +187,11 @@
           cube.rotation.x = rotation.x;
           cube.rotation.y = rotation.y;
           cube.rotation.z = rotation.z;
+
+          console.log(cube.position.clone())
+
+          // controls.object.position.set(cube.position.clone())
+          // controls.update()
 
           return cube;
         }
