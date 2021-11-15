@@ -1,127 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <style>
-        body, html {
-            margin: 0;
-            height: 100%;
-        }
+      body,
+      html {
+        margin: 0;
+        height: 100%;
+      }
 
-        #canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
+      #canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
     </style>
-    <script src="../lib/three.js"></script>
-</head>
-<body>
-    <canvas id="canvas"></canvas>
-    <script>
-        function main() {
-            const canvas = document.getElementById("canvas");
-            const renderer = new THREE.WebGLRenderer({canvas});
+  </head>
+  <body>
+    <div class="container">
+      <canvas id="main"></canvas>
+    </div>
+    <script type="module">
+      import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
+      import AxisGridHelper from "../helper/AxisGridHelper.js";
+      import { OrbitControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
+      import { LightProbeHelper } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/helpers/LightProbeHelper.js";
+      import { LightProbeGenerator } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/lights/LightProbeGenerator.js";
+      import { TransformControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/TransformControls.js";
+      import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
+      import dat from "https://cdn.skypack.dev/dat.gui";
 
-            // fov 视野范围，表示在垂直方向多少度。
-            const fov = 75;
-            // 指画布的宽高比。默认情况下画布是300*500像素所以宽高比默认为2
-            const aspect = canvas.clientWidth / canvas.clientHeight;
-            // near和far表示近平面和远平面，它们限制了摄影机面朝向的可绘区域。任何距离小于或超过这个范围的物体都将被裁剪掉(不绘制)
-            const near = 0.1;
-            const far = 5;
-            // 这四个参数定义了一个视椎。
-            // 近平面和远平面的高度由视野范围决定，宽度由视野范围宽高比决定。视椎内的物体将被绘制，视椎外的物体将不会绘制
-            const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+      var canvas = document.getElementById("main");
 
-            // 摄像机默认指向Z轴负方向，上方向朝向Y轴正方向。我们将立方体放置再坐标原点，所以我们需要往后移一下摄像机才能显示出物体。
-            camera.position.z = 2;
+      var renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+      });
 
-            // 场景
-            const scene = new THREE.Scene();
+      var scene = new THREE.Scene();
 
-            const boxWidth = 1;
-            const boxHeight = 1;
-            const boxDepth = 1;
-            // 几何体
-            const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-            // 材质:MeshBasicMaterial材质不会受到灯光的影响，MeshPhongMaterial会受到灯光的影响
-            const material = new THREE.MeshPhongMaterial({ color: 0x44aa88 });
+      var camera = new THREE.PerspectiveCamera(
+        45,
+        canvas.clientWidth / canvas.clientHeight,
+        1,
+        100000
+      );
 
-            const color = 0xFFFFFF;
-            const intensity = 1;
-            const light = new THREE.DirectionalLight(color, intensity);
-            light.position.set(-1, 2, 4);
-            scene.add(light);
+      var geometry = new THREE.BoxGeometry();
 
-            function makeInstance(geometry, color, x) {
-                const material = new THREE.MeshPhongMaterial({ color });
-                
-                // 网格对象
-                const cube = new THREE.Mesh(geometry, material);
-                scene.add(cube);
+      var rayCaster = new THREE.Raycaster();
 
-                cube.position.x = x;
+      var controls;
 
-                return cube;
-            }
+      var dragging = false;
 
-            const cubes = [
-                makeInstance(geometry, 0x44aa88, 0),
-                makeInstance(geometry, 0x8844aa, -2),
-                makeInstance(geometry, 0xaa8844, 2)
-            ];
+      var startPosition = {
+        x: 0,
+        y: 0,
+      };
 
-            function resizeRendererToDisplaySize(renderer) {
-                const canvas = renderer.domElement;
-                const pixelRatio = window.devicePixelRatio;
-                const width = canvas.clientWidth * pixelRatio | 0;
-                const height = canvas.clientHeight * pixelRatio | 0;
-                const needResize = canvas.width !== width || canvas.height !== height;
+      var vertexSize = 2;
 
-                if (needResize) {
-                    renderer.setSize(width, height, false);
-                }
+      onLoad();
 
-                return needResize;
-            }
+      function onLoad() {
+        canvas.onmousedown = onMouseDown;
+        canvas.onmousemove = onDrag;
+        canvas.onmouseup = onMouseUp;
 
-            function render(time) {
-                time *= 0.001;
-                
-                if (resizeRendererToDisplaySize(renderer)) {
-                    const canvas = renderer.domElement;
-                    camera.aspect = canvas.clientWidth / canvas.clientHeight;
-                    camera.updateProjectionMatrix();
-                }
+        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
 
-                cubes.forEach((cube, index) => {
-                    const speed = 1 + index * 0.1;
-                    const rot = time * speed;
-                    cube.rotation.x = rot;
-                    cube.rotation.y = rot;
-                })
+        camera.position.set(0, 0, 25.0);
+        scene.add(camera);
 
-                // const speed = 1 + 1 * 0.1;
-                // const rot = time * 1;
+        /*
+         * Create a Rectangle
+         */
+        geometry.vertices.push(new THREE.Vector3(-vertexSize, vertexSize, 0.0));
+        geometry.vertices.push(new THREE.Vector3(vertexSize, vertexSize, 0.0));
+        geometry.vertices.push(new THREE.Vector3(vertexSize, -vertexSize, 0.0));
+        geometry.vertices.push(
+          new THREE.Vector3(-vertexSize, -vertexSize, 0.0)
+        );
+        geometry.faces.push(new THREE.Face3(0, 1, 2));
+        geometry.faces.push(new THREE.Face3(0, 2, 3));
 
-                // camera.rotation.x = rot
-                // camera.rotation.z = rot
-                // camera.rotation.y = rot
+        var material = new THREE.MeshBasicMaterial({
+          color: 0xdb1e1e,
+          wireframe: true,
+        });
 
-                // console.log(rot, '----------camera----------', time)
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.x = Math.PI / 2;
+        scene.add(mesh);
 
-                renderer.render(scene, camera);
+        var gridSize = 20;
+        var divisions = 20;
+        var gridHelper = new THREE.GridHelper(gridSize, divisions);
+        scene.add(gridHelper);
 
-                requestAnimationFrame(render);
-            }
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
 
-            requestAnimationFrame(render)
+        render();
+      }
+
+      function update(index, x, y) {
+        geometry.vertices[index].set(x, y, 0);
+        geometry.verticesNeedUpdate = true;
+      }
+
+      function render() {
+        requestAnimationFrame(render);
+        renderer.render(scene, camera);
+      }
+
+      function onMouseDown(e) {
+        var relative = get3DPosition(e);
+        if (!relative) {
+          return;
         }
-        main();
+        dragging = true;
+        startPosition.x = e.pageX;
+        startPosition.y = e.pageY;
+        scene.children[1].position.set(
+          relative.x + vertexSize,
+          relative.y,
+          relative.z
+        );
+        controls.enabled = false;
+      }
+
+      function onDrag(e) {
+        if (dragging) {
+          var clientX = (e.pageX - startPosition.x) / 50;
+          var clientY = (e.pageY - startPosition.y) / 50;
+          var vertices = geometry.vertices;
+          vertices[1].x = clientX;
+          vertices[2].x = clientX;
+          vertices[2].y = -clientY;
+          vertices[3].y = -clientY;
+          geometry.verticesNeedUpdate = true;
+        }
+      }
+
+      function onMouseUp(e) {
+        dragging = false;
+        controls.enabled = true;
+      }
+
+      function get3DPosition(event) {
+        var offset = $(canvas).offset();
+        var position = {
+          x: ((event.clientX - offset.left) / canvas.clientWidth) * 2 - 1,
+          y: -((event.clientY - offset.top) / canvas.clientHeight) * 2 + 1,
+        };
+        rayCaster.setFromCamera(position, camera);
+        var intersects = rayCaster.intersectObjects(scene.children, true);
+        if (intersects.length > 0) {
+          return intersects[0].point;
+        }
+      }
     </script>
-</body>
+  </body>
 </html>
