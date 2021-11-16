@@ -22,11 +22,11 @@
       }
       .full {
         width: 100%;
-        height: calc(100% - 500px);
+        height: calc(100% - 300px);
       }
       .wrapper {
         width: 100%;
-        height: 500px;
+        height: 300px;
         display: flex;
       }
       .box-item {
@@ -73,58 +73,58 @@
           objectType: "Car",
           objectId: "1",
         },
-        {
-          position: {
-            x: 5.58377742767334,
-            y: -0.4827409386634829,
-            z: -1.0303291976451874,
-          },
-          scale: {
-            x: 2.0008632135391236,
-            y: 5.4653849792480464,
-            z: 1.5667174649238587,
-          },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "2",
-        },
-        {
-          position: {
-            x: 5.601998686790466,
-            y: 2.34384936094284,
-            z: -0.5936105251312256,
-          },
-          scale: {
-            x: 2.0997334909439083,
-            y: 5.970669527053833,
-            z: 2.4680173587799072,
-          },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "3",
-        },
-        {
-          position: {
-            x: 3.4776990137048744,
-            y: 4.983277722908564,
-            z: -1.7167396396398544,
-          },
-          scale: {
-            x: 2.2501723932241764,
-            y: 3.830514568623285,
-            z: 2.8923755180835724,
-          },
-          rotation: { x: 0, y: 0, z: 1.5947064400456128, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "4",
-          // 位置信息：
-          // [
-          //     -0.05379675053814644, 2.249529219383414, 0, 0,
-          //     -3.829419680616208, -0.09157931067925629, 0, 0,
-          //     0, 0, 2.8923755180835724, 0,
-          //     3.4776990137048744, 4.983277722908564, -1.7167396396398544,     1
-          // ]
-        },
+        // {
+        //   position: {
+        //     x: 5.58377742767334,
+        //     y: -0.4827409386634829,
+        //     z: -1.0303291976451874,
+        //   },
+        //   scale: {
+        //     x: 2.0008632135391236,
+        //     y: 5.4653849792480464,
+        //     z: 1.5667174649238587,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "2",
+        // },
+        // {
+        //   position: {
+        //     x: 5.601998686790466,
+        //     y: 2.34384936094284,
+        //     z: -0.5936105251312256,
+        //   },
+        //   scale: {
+        //     x: 2.0997334909439083,
+        //     y: 5.970669527053833,
+        //     z: 2.4680173587799072,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "3",
+        // },
+        // {
+        //   position: {
+        //     x: 3.4776990137048744,
+        //     y: 4.983277722908564,
+        //     z: -1.7167396396398544,
+        //   },
+        //   scale: {
+        //     x: 2.2501723932241764,
+        //     y: 3.830514568623285,
+        //     z: 2.8923755180835724,
+        //   },
+        //   rotation: { x: 0, y: 0, z: 1.5947064400456128, _order: "XYZ" },
+        //   objectType: "Car",
+        //   objectId: "4",
+        //   // 位置信息：
+        //   // [
+        //   //     -0.05379675053814644, 2.249529219383414, 0, 0,
+        //   //     -3.829419680616208, -0.09157931067925629, 0, 0,
+        //   //     0, 0, 2.8923755180835724, 0,
+        //   //     3.4776990137048744, 4.983277722908564, -1.7167396396398544,     1
+        //   // ]
+        // },
       ];
 
       function main() {
@@ -133,7 +133,10 @@
         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
         renderer.autoClear = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputEncoding = THREE.sRGBEncoding;
+        // renderer.outputEncoding = THREE.sRGBEncoding;
+        // renderer.sortObjects = false;
+
+        const scene = new THREE.Scene();
 
         function render() {
           screens.forEach((screen) => {
@@ -157,7 +160,7 @@
 
         const screens = ["full", "top", "side", "front"].map((item) => {
           const dom = document.querySelector(`.${item}`);
-          return new Screen(dom, render, item);
+          return new Screen(dom, render, item, scene);
         });
 
         const boxWidth = 1;
@@ -176,13 +179,14 @@
         });
 
         function makeInstance(geometry, color, location) {
-          const material = new THREE.LineBasicMaterial({
+          const material = new THREE.MeshBasicMaterial({
             color,
             alphaTest: 0.5,
             linewidth: 4,
           });
 
-          const cube = new THREE.LineSegments(geometry, material);
+          const cube = new THREE.Mesh(geometry, material);
+          cube.name = 'box';
 
           const { position, scale, rotation } = location;
 
@@ -198,13 +202,14 @@
           cube.rotation.y = rotation.y;
           cube.rotation.z = rotation.z;
 
-          screens.forEach((screen) => screen.add(cube.clone()));
+          // screens.forEach((screen) => screen.add(cube.clone()));
 
+          scene.add(cube.clone())
           return cube;
         }
 
         data.forEach((item) => {
-          makeInstance(edges, 0x44aa88, item);
+          makeInstance(geometry, 0x44aa88, item);
         });
 
         window.addEventListener("resize", onWindowResize);
