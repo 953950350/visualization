@@ -134,13 +134,18 @@
         renderer.autoClear = false;
         renderer.setSize(window.innerWidth, window.innerHeight);
         // renderer.outputEncoding = THREE.sRGBEncoding;
-        // renderer.sortObjects = false;
+        renderer.sortObjects = false;
 
         const scene = new THREE.Scene();
 
+        const screens = ["full", "top", "side", "front"].map((item) => {
+          const dom = document.querySelector(`.${item}`);
+          return new Screen(dom, render, item, scene);
+        });
+
         function render() {
           screens.forEach((screen) => {
-            renderer.setScissorTest(true);
+            // renderer.setScissorTest(true);
             const location = screen.getLocation();
             renderer.setScissor(
               location.left,
@@ -158,11 +163,7 @@
           });
         }
 
-        const screens = ["full", "top", "side", "front"].map((item) => {
-          const dom = document.querySelector(`.${item}`);
-          return new Screen(dom, render, item, scene);
-        });
-
+        
         const boxWidth = 1;
         const boxHeight = 1;
         const boxDepth = 1;
@@ -172,8 +173,7 @@
 
         const loader = new PCDLoader();
         loader.load("../asstes/example.pcd", function (points) {
-          points.geometry.rotateZ(Math.PI * (3 / 2));
-          points.material.color.setHex(Math.random() * 0xffffff);
+          points.material.color.setHex(0xfffff0);
           screens.forEach((screen) => screen.add(points.clone()));
           render();
         });
@@ -202,14 +202,31 @@
           cube.rotation.y = rotation.y;
           cube.rotation.z = rotation.z;
 
-          // screens.forEach((screen) => screen.add(cube.clone()));
+          screens.forEach((screen) => {
+            const newCube = cube.clone();
+            screen.add(newCube);
+            if (screen._type !== 'full') {
+              screen.bindDragControl(newCube, (position, type) => {
+                screens.filter(screen => screen._type !== type).forEach(screen => {
+                  for(let i = 0; i < screen.scene.children.length; i++) {
+                    const current = screen.scene.children[i]
+                    if (current.name === 'box') {
+                      current.position.x = position.x || current.position.x 
+                      current.position.y = position.y || current.position.y 
+                      current.position.z = position.z || current.position.z 
+                    }
+                  }
+                });
+              })
+            }
+          });
 
-          scene.add(cube.clone())
+          
           return cube;
         }
 
         data.forEach((item) => {
-          makeInstance(geometry, 0x44aa88, item);
+          makeInstance(geometry, 'red', item);
         });
 
         window.addEventListener("resize", onWindowResize);
