@@ -206,14 +206,19 @@
             const newCube = cube.clone();
             screen.add(newCube);
             if (screen._type !== 'full') {
-              screen.bindDragControl(newCube, (position, type) => {
-                screens.filter(screen => screen._type !== type).forEach(screen => {
+              screen.bindDragControl(newCube, ({ position = {}, scale = {} }, current) => {
+                screens.filter(screen => screen._type !== current).forEach(screen => {
                   for(let i = 0; i < screen.scene.children.length; i++) {
                     const current = screen.scene.children[i]
                     if (current.name === 'box') {
                       current.position.x = position.x || current.position.x 
                       current.position.y = position.y || current.position.y 
-                      current.position.z = position.z || current.position.z 
+                      current.position.z = position.z || current.position.z
+                      
+                      current.scale.x = scale.x || current.scale.x 
+                      current.scale.y = scale.y || current.scale.y 
+                      current.scale.z = scale.z || current.scale.z
+                      screen.updateAllPoints(current);
                     }
                   }
                 });
