@@ -1,10 +1,15 @@
 import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
-import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
+import {
+  PCDLoader
+} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
 import Screen from "./Screen.js";
 
 export default class BoxEdit {
   constructor(canvas, boxData, pcdUrl) {
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.autoClear = false;
     renderer.sortObjects = false;
@@ -13,7 +18,7 @@ export default class BoxEdit {
       const dom = document.querySelector(`.${item}`);
       return new Screen(dom, this.render.bind(this), item);
     });
-    
+
     this.renderer = renderer;
     this.screens = screens;
 
@@ -63,23 +68,31 @@ export default class BoxEdit {
     });
     const cube = new THREE.Mesh(geometry, material);
     cube.name = "box";
-    const { position, scale } = boxData;
+    const {
+      position,
+      scale,
+      rotation
+    } = boxData;
 
     cube.position.set(position.x, position.y, position.z);
     cube.scale.set(scale.x, scale.y, scale.z);
+    cube.rotation.set(rotation.x, rotation.y, rotation.z);
 
     this.screens.forEach((screen) => {
       const newCube = cube.clone();
-      screen.add(newCube);
-      if (screen._type !== "full") {
+      if (screen._type === 'full') {
+        screen._createBoxWrapper(newCube)
+      } else {
         screen.bindDragControl(
           newCube,
-          ({ position = {}, scale = {} }, current) => {
+          ({
+            position,
+            scale
+          }, current) => {
             this.screens
               .filter((screen) => screen._type !== current)
               .forEach((screen) => {
-                for (let i = 0; i < screen.scene.children.length; i++) {
-                  const current = screen.scene.children[i];
+                screen.scene.getObjectByName('boxWrapper').children.forEach(current => {
                   if (current.name === "box") {
                     current.position.x = position.x || current.position.x;
                     current.position.y = position.y || current.position.y;
@@ -90,7 +103,7 @@ export default class BoxEdit {
                     current.scale.z = scale.z || current.scale.z;
                     screen.updateAllPoints(current);
                   }
-                }
+                })
               });
           }
         );

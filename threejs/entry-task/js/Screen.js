@@ -22,13 +22,13 @@ export default class Screen {
 
     this._initControls(render);
     if (type !== "full") {
-      this.camera.zoom = 10;
+      this.camera.zoom = 20;
       this.camera.updateProjectionMatrix();
     }
     this._setRotation();
 
-    const arrowHelper = new THREE.AxesHelper(5);
-    this.scene.add(arrowHelper);
+    // const arrowHelper = new THREE.AxesHelper(5);
+    // this.scene.add(arrowHelper);
   }
   _setRotation() {
     if (this._type === "side") {
@@ -81,13 +81,14 @@ export default class Screen {
     }
   }
   _updatePoints(pointsArr, zoom) {
-    this.scene.children.forEach((item) => {
+    this.scene.getObjectByName('boxWrapper').children.forEach((item) => {
       if (item.name !== "points") return;
       if (typeof zoom !== "undefined")
         item.scale.set(10 / zoom, 10 / zoom, 10 / zoom);
       const index = pointsArr.findIndex(
         (i) => i.locationType === item.locationType
       );
+      
       if (index === -1) return;
       const position = pointsArr[index];
       item.position.set(position.x, position.y, position.z);
@@ -103,7 +104,7 @@ export default class Screen {
     sphere.position.set(x, y, z);
     sphere.name = "points";
     sphere.locationType = locationType;
-    this.add(sphere);
+    this.boxWrapper.add(sphere);
     return sphere;
   }
   _addPoints(object) {
@@ -157,26 +158,26 @@ export default class Screen {
       case "side":
         return [
           {
-            x: 10,
-            y: y + long / 2,
+            x: x + width / 2,
+            y: -10,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: 10,
-            y: y - long / 2,
+            x: x - width / 2,
+            y: -10,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: 10,
-            y: y + long / 2,
+            x: x + width / 2,
+            y: -10,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: 10,
-            y: y - long / 2,
+            x: x - width / 2,
+            y: -10,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
@@ -184,26 +185,26 @@ export default class Screen {
       case "front":
         return [
           {
-            x: x + width / 2,
-            y: -100,
+            x: -100,
+            y: y + long / 2,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: x - width / 2,
-            y: -100,
+            x: -100,
+            y: y - long / 2,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: x + width / 2,
-            y: -100,
+            x: -100,
+            y: y + long / 2,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: x - width / 2,
-            y: -100,
+            x: -100,
+            y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
@@ -219,8 +220,8 @@ export default class Screen {
     const height = Math.abs(boxSize.z);
     const long = Math.abs(boxSize.y);
 
-    var position = new THREE.Vector3();
-    object.getWorldPosition(position);
+    // var position = new THREE.Vector3();
+    // object.getWorldPosition(position);
 
     return {
       size: {
@@ -228,18 +229,43 @@ export default class Screen {
         height,
         long,
       },
-      position,
+      position: object.position,
       rotation: object.rotation,
     };
   }
 
-  bindDragControl(object, onDrag) {
-    const points = this._addPoints(object);
+  _createBoxWrapper(object) {
+    const boxWrapper = new THREE.Object3D();
+    this.add(boxWrapper)
+    boxWrapper.position.set(object.position.x, object.position.y, object.position.z);
+    boxWrapper.rotation.set(object.rotation.x, object.rotation.y, object.rotation.z)
+    object.position.set(0, 0, 0)
+    object.rotation.set(0, 0, 0)
 
-    this._object = object;
+    const arrowHelper = new THREE.AxesHelper(10);
 
+    boxWrapper.name = 'boxWrapper'
+
+    boxWrapper.add(arrowHelper)
+    
+    boxWrapper.add(object);
+
+    this.boxWrapper = boxWrapper
+    return boxWrapper
+  }
+  bindDragControl(box, onDrag) {
+
+    const boxWrapper = this._createBoxWrapper(box)
+
+    
+
+    const points = this._addPoints(box);
+    
+   
+
+    this._object = box;
     const dragControls = new DragControls(
-      [object, ...points],
+      [boxWrapper],
       this.camera,
       this._dom
     );
@@ -252,12 +278,13 @@ export default class Screen {
 
     dragControls.addEventListener("drag", (event) => {
       if (event.object.name === "box") {
-        this._updatePoints(
-          this._computedPointLocation(this._computedBoxSize(event.object))
-        );
-        onDrag({ position: event.object.position }, this._type);
+        // this._updatePoints(
+        //   this._computedPointLocation(this._computedBoxSize(event.object))
+        // );
+        onDrag(event.object, this._type);
         this._render();
       } else {
+        return
         const distance = oldPointsPosition.sub(event.object.position);
 
         let newWidth, newLong, newHeight;
