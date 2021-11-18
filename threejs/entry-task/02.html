@@ -52,13 +52,9 @@
       import { LightProbeGenerator } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/lights/LightProbeGenerator.js";
       import { TransformControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/TransformControls.js";
       import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
-      import Screen from "./js/Screen.js";
-      import dat from "https://cdn.skypack.dev/dat.gui";
+      import BoxEdit from './js/BoxEdit.js'
 
-      const gui = new dat.GUI();
-
-      const data = [
-        {
+      const data = {
           position: {
             x: -8.400349855422974,
             y: 1.981928288936615,
@@ -69,182 +65,15 @@
             y: 5.634169597625732,
             z: 1.470538069009781,
           },
-          rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
+          rotation: { x: 0, y: 0, z: 0, _order: "XYZ" },
           objectType: "Car",
           objectId: "1",
-        },
-        // {
-        //   position: {
-        //     x: 5.58377742767334,
-        //     y: -0.4827409386634829,
-        //     z: -1.0303291976451874,
-        //   },
-        //   scale: {
-        //     x: 2.0008632135391236,
-        //     y: 5.4653849792480464,
-        //     z: 1.5667174649238587,
-        //   },
-        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-        //   objectType: "Car",
-        //   objectId: "2",
-        // },
-        // {
-        //   position: {
-        //     x: 5.601998686790466,
-        //     y: 2.34384936094284,
-        //     z: -0.5936105251312256,
-        //   },
-        //   scale: {
-        //     x: 2.0997334909439083,
-        //     y: 5.970669527053833,
-        //     z: 2.4680173587799072,
-        //   },
-        //   rotation: { x: 0, y: 0, z: 1.5707963267948966, _order: "XYZ" },
-        //   objectType: "Car",
-        //   objectId: "3",
-        // },
-        // {
-        //   position: {
-        //     x: 3.4776990137048744,
-        //     y: 4.983277722908564,
-        //     z: -1.7167396396398544,
-        //   },
-        //   scale: {
-        //     x: 2.2501723932241764,
-        //     y: 3.830514568623285,
-        //     z: 2.8923755180835724,
-        //   },
-        //   rotation: { x: 0, y: 0, z: 1.5947064400456128, _order: "XYZ" },
-        //   objectType: "Car",
-        //   objectId: "4",
-        //   // 位置信息：
-        //   // [
-        //   //     -0.05379675053814644, 2.249529219383414, 0, 0,
-        //   //     -3.829419680616208, -0.09157931067925629, 0, 0,
-        //   //     0, 0, 2.8923755180835724, 0,
-        //   //     3.4776990137048744, 4.983277722908564, -1.7167396396398544,     1
-        //   // ]
-        // },
-      ];
+        }
 
       function main() {
         const canvas = document.getElementById("canvas");
 
-        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-        renderer.autoClear = false;
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        // renderer.outputEncoding = THREE.sRGBEncoding;
-        renderer.sortObjects = false;
-
-        const scene = new THREE.Scene();
-
-        const screens = ["full", "top", "side", "front"].map((item) => {
-          const dom = document.querySelector(`.${item}`);
-          return new Screen(dom, render, item, scene);
-        });
-
-        function render() {
-          screens.forEach((screen) => {
-            // renderer.setScissorTest(true);
-            const location = screen.getLocation();
-            renderer.setScissor(
-              location.left,
-              location.canvasY,
-              location.width,
-              location.height
-            );
-            renderer.setViewport(
-              location.left,
-              location.canvasY,
-              location.width,
-              location.height
-            );
-            renderer.render(screen.scene, screen.camera);
-          });
-        }
-
-        
-        const boxWidth = 1;
-        const boxHeight = 1;
-        const boxDepth = 1;
-
-        const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-        const edges = new THREE.EdgesGeometry(geometry);
-
-        const loader = new PCDLoader();
-        loader.load("../asstes/example.pcd", function (points) {
-          points.material.color.setHex(0xfffff0);
-          screens.forEach((screen) => screen.add(points.clone()));
-          render();
-        });
-
-        function makeInstance(geometry, color, location) {
-          const material = new THREE.MeshBasicMaterial({
-            color,
-            alphaTest: 0.5,
-            linewidth: 4,
-          });
-
-          const cube = new THREE.Mesh(geometry, material);
-          cube.name = 'box';
-
-          const { position, scale, rotation } = location;
-
-          cube.position.x = position.x;
-          cube.position.y = position.y;
-          cube.position.z = position.z;
-
-          cube.scale.x = scale.x;
-          cube.scale.y = scale.y;
-          cube.scale.z = scale.z;
-
-          cube.rotation.x = rotation.x;
-          cube.rotation.y = rotation.y;
-          cube.rotation.z = rotation.z;
-
-          screens.forEach((screen) => {
-            const newCube = cube.clone();
-            screen.add(newCube);
-            if (screen._type !== 'full') {
-              screen.bindDragControl(newCube, ({ position = {}, scale = {} }, current) => {
-                screens.filter(screen => screen._type !== current).forEach(screen => {
-                  for(let i = 0; i < screen.scene.children.length; i++) {
-                    const current = screen.scene.children[i]
-                    if (current.name === 'box') {
-                      current.position.x = position.x || current.position.x 
-                      current.position.y = position.y || current.position.y 
-                      current.position.z = position.z || current.position.z
-                      
-                      current.scale.x = scale.x || current.scale.x 
-                      current.scale.y = scale.y || current.scale.y 
-                      current.scale.z = scale.z || current.scale.z
-                      screen.updateAllPoints(current);
-                    }
-                  }
-                });
-              })
-            }
-          });
-
-          
-          return cube;
-        }
-
-        data.forEach((item) => {
-          makeInstance(geometry, 'red', item);
-        });
-
-        window.addEventListener("resize", onWindowResize);
-
-        function onWindowResize() {
-          screens.forEach((screen) => screen.update());
-          renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function makeAxisGrid(node, label, units) {
-          const helper = new AxisGridHelper(node, units);
-          gui.add(helper, "visible").name(label);
-        }
+        new BoxEdit(canvas, data, '../asstes/example.pcd')
       }
       window.addEventListener("load", main)
     </script>
