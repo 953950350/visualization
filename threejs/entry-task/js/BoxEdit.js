@@ -1,14 +1,12 @@
 import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
-import {
-  PCDLoader
-} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
+import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
 import Screen from "./Screen.js";
 
 export default class BoxEdit {
   constructor(canvas, boxData, pcdUrl) {
     const renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true
+      antialias: true,
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.autoClear = false;
@@ -23,7 +21,7 @@ export default class BoxEdit {
     this.screens = screens;
 
     this.loaderPCD(pcdUrl);
-    this.addBox(boxData)
+    this.addBox(boxData);
 
     window.addEventListener("resize", this.onResize.bind(this));
   }
@@ -68,11 +66,7 @@ export default class BoxEdit {
     });
     const cube = new THREE.Mesh(geometry, material);
     cube.name = "box";
-    const {
-      position,
-      scale,
-      rotation
-    } = boxData;
+    const { position, scale, rotation } = boxData;
 
     cube.position.set(position.x, position.y, position.z);
     cube.scale.set(scale.x, scale.y, scale.z);
@@ -80,33 +74,30 @@ export default class BoxEdit {
 
     this.screens.forEach((screen) => {
       const newCube = cube.clone();
-      if (screen._type === 'full') {
-        screen._createBoxWrapper(newCube)
+      if (screen._type === "full") {
+        screen._createBoxWrapper(newCube);
       } else {
-        screen.bindDragControl(
-          newCube,
-          ({
-            position,
-            scale
-          }, current) => {
-            this.screens
-              .filter((screen) => screen._type !== current)
-              .forEach((screen) => {
-                screen.scene.getObjectByName('boxWrapper').children.forEach(current => {
-                  if (current.name === "box") {
-                    current.position.x = position.x || current.position.x;
-                    current.position.y = position.y || current.position.y;
-                    current.position.z = position.z || current.position.z;
-
-                    current.scale.x = scale.x || current.scale.x;
-                    current.scale.y = scale.y || current.scale.y;
-                    current.scale.z = scale.z || current.scale.z;
-                    screen.updateAllPoints(current);
-                  }
-                })
-              });
-          }
-        );
+        screen.bindDragControl(newCube, ({ position, scale }, current) => {
+          this.screens
+            .filter((screen) => screen._type !== current)
+            .forEach((screen) => {
+              const boxWrapper = screen.scene.getObjectByName("boxWrapper");
+              const box = screen.scene.getObjectByName("box");
+              boxWrapper.position.set(
+                position.x || boxWrapper.position.x,
+                position.y || boxWrapper.position.y,
+                position.z || boxWrapper.position.z
+              );
+              if (scale) {
+                box.scale.set(
+                  scale.x || box.scale.x,
+                  scale.y || box.scale.y,
+                  scale.z || box.scale.z
+                );
+                screen.updateAllPoints(box);
+              }
+            });
+        });
       }
     });
   }

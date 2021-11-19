@@ -27,6 +27,10 @@ export default class Screen {
     }
     this._setRotation();
 
+    this._initRaycaster();
+
+    this._bindMouseEvent();
+
     // const arrowHelper = new THREE.AxesHelper(5);
     // this.scene.add(arrowHelper);
   }
@@ -80,15 +84,128 @@ export default class Screen {
       this.scene.position.x = -1000;
     }
   }
+  _setPlane() {
+    var cameraPoint = new THREE.Vector3();
+    var plane = new THREE.Plane();
+    plane.setFromNormalAndCoplanarPoint(
+      this.camera.getWorldDirection(plane.normal),
+      cameraPoint
+    );
+    return plane;
+  }
+  _screenTOWorld(clientX, clientY) {
+    //三维坐标
+    var worldPoint = new THREE.Vector3();
+    //获取渲染的DOM元素
+    var rect = this.getLocation();
+    const mousePoint = new THREE.Vector2();
+    //转设备坐标
+    mousePoint.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mousePoint.y = -((clientY - rect.canvasY) / rect.height) * 2 + 1;
+    this._raycaster.setFromCamera(mousePoint, this.camera);
+    //获取平面
+    var screenPlane = this._setPlane();
+    //求交
+    this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
+    return worldPoint;
+  }
+  _initControls(render) {
+    this._render = render;
+    this.controls = new OrbitControls(this.camera, this._dom);
+    this.controls.addEventListener("change", (data) => {
+      this._setRotation();
+      render();
+    });
+  }
+  _initRaycaster() {
+    this._raycaster = new THREE.Raycaster();
+  }
+  _bindMouseEvent() {
+    if (this._type === "full") return;
+    this._dom.addEventListener(
+      "mousedown",
+      (e) => {
+        this._onMouseDown(e);
+      },
+      false
+    );
+    this._dom.addEventListener("mouseup", (e) => {
+      if (e.which !== 1) return;
+      this._isMove = false;
+    });
+    this._dom.addEventListener("mousemove", (e) => {
+      this._onMouseMove(e);
+    });
+  }
+  _onMouseMove(event) {
+    if (!this._isMove || event.which !== 1) return;
+    const currentMousePosition = this._screenTOWorld(
+      event.clientX,
+      event.clientY
+    );
+
+    const x = currentMousePosition.x - this.oldMousePosition.x;
+    const y = currentMousePosition.y - this.oldMousePosition.y;
+    const z = currentMousePosition.z - this.oldMousePosition.z;
+
+    if (this._intersect.name === "box") {
+      const boxWrapper = this.scene.getObjectByName("boxWrapper");
+      boxWrapper.position.x = boxWrapper.position.x + x;
+      boxWrapper.position.y = boxWrapper.position.y + y;
+      boxWrapper.position.z = boxWrapper.position.z + z;
+      this._onDrag({ position : boxWrapper.position }, this._type);
+    } else if (this._intersect.name === "points") {
+      this._scaleBox({x, y, z}, this._intersect)
+    }
+
+    this.oldMousePosition = currentMousePosition;
+  }
+  _onMouseDown(event) {
+    if (event.which !== 1) return;
+    const location = this.getLocation();
+    this._mouse.x = ((event.clientX - location.left) / location.width) * 2 - 1;
+    this._mouse.y = -((event.clientY - location.top) / location.height) * 2 + 1;
+
+    this.oldMousePosition = this._screenTOWorld(event.clientX, event.clientY);
+
+    // 通过鼠标点的位置和当前相机的矩阵计算出raycaster
+    this._raycaster.setFromCamera(this._mouse, this.camera);
+
+    // 获取raycaster直线和所有模型相交的数组集合
+    let intersects = this._raycaster.intersectObjects(this.scene.children);
+
+    console.log(
+      intersects.filter(
+        (item) => item.object.name === "box" || item.object.name === "points"
+      )
+    );
+    intersects = intersects.filter(
+      (item) => item.object.name === "box" || item.object.name === "points"
+    );
+
+    if (!intersects.length) return;
+
+    this._isMove = true;
+
+    this._intersect = intersects[0].object;
+
+    //将所有的相交的模型的颜色设置为红色，如果只需要将第一个触发事件，那就数组的第一个模型改变颜色即可
+    // for ( var i = 0; i < intersects.length; i++ ) {
+    //   console.log(intersects[ i ].object)
+    //   intersects[ i ].object.position.x = intersects[ i ].object.position.x + 1
+    //   intersects[ i ].object.position.y = intersects[ i ].object.position.y + 1
+    //   this._render()
+    // }
+  }
   _updatePoints(pointsArr, zoom) {
-    this.scene.getObjectByName('boxWrapper').children.forEach((item) => {
+    this.scene.getObjectByName("boxWrapper").children.forEach((item) => {
       if (item.name !== "points") return;
       if (typeof zoom !== "undefined")
         item.scale.set(10 / zoom, 10 / zoom, 10 / zoom);
       const index = pointsArr.findIndex(
         (i) => i.locationType === item.locationType
       );
-      
+
       if (index === -1) return;
       const position = pointsArr[index];
       item.position.set(position.x, position.y, position.z);
@@ -126,7 +243,6 @@ export default class Screen {
 
     const { x, y, z } = position;
 
-
     switch (this._type) {
       case "top":
         return [
@@ -153,31 +269,31 @@ export default class Screen {
             y: y - long / 2,
             z: 10,
             locationType: "bottomLeft",
-          }
+          },
         ];
       case "side":
         return [
           {
-            x: x + width / 2,
-            y: -10,
+            x: 100,
+            y: y + long / 2,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: x - width / 2,
-            y: -10,
+            x: 100,
+            y: y - long / 2,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: x + width / 2,
-            y: -10,
+            x: 100,
+            y: y + long / 2,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: x - width / 2,
-            y: -10,
+            x: 100,
+            y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
@@ -185,26 +301,26 @@ export default class Screen {
       case "front":
         return [
           {
-            x: -100,
-            y: y + long / 2,
+            x: x + width / 2,
+            y: -10,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: -100,
-            y: y - long / 2,
+            x: x - width / 2,
+            y: -10,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: -100,
-            y: y + long / 2,
+            x: x + width / 2,
+            y: -10,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: -100,
-            y: y - long / 2,
+            x: x - width / 2,
+            y: -10,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
@@ -236,39 +352,178 @@ export default class Screen {
 
   _createBoxWrapper(object) {
     const boxWrapper = new THREE.Object3D();
-    this.add(boxWrapper)
-    boxWrapper.position.set(object.position.x, object.position.y, object.position.z);
-    boxWrapper.rotation.set(object.rotation.x, object.rotation.y, object.rotation.z)
-    object.position.set(0, 0, 0)
-    object.rotation.set(0, 0, 0)
+    this.add(boxWrapper);
+    boxWrapper.position.set(
+      object.position.x,
+      object.position.y,
+      object.position.z
+    );
+    boxWrapper.rotation.set(
+      object.rotation.x,
+      object.rotation.y,
+      object.rotation.z
+    );
+    object.position.set(0, 0, 0);
+    object.rotation.set(0, 0, 0);
 
     const arrowHelper = new THREE.AxesHelper(10);
 
-    boxWrapper.name = 'boxWrapper'
+    boxWrapper.name = "boxWrapper";
 
-    boxWrapper.add(arrowHelper)
-    
+    boxWrapper.add(arrowHelper);
+
     boxWrapper.add(object);
 
-    this.boxWrapper = boxWrapper
-    return boxWrapper
+    this.boxWrapper = boxWrapper;
+    return boxWrapper;
+  }
+  _scaleBox(distance, point) {
+    let newWidth, newLong, newHeight;
+    const box = this.scene.getObjectByName("box")
+    const {
+      size: { width, height, long },
+    } = this._computedBoxSize(box);
+    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+
+    let x = distance.x;
+    let y = distance.y;
+    let z = distance.z;
+
+    let positionX = boxWrapper.position.x + x / 2;
+    let positionY = boxWrapper.position.y + y / 2;
+    let positionZ = boxWrapper.position.z + z / 2;
+
+    let position = {}
+
+    let scale = {}
+
+    let baseX, baseY, baseZ;
+
+    switch (this._type) {
+      case "top":
+        switch (point.locationType) {
+          case "bottomRight":
+            y = -y;
+            break;
+          case "topLeft":
+            x = -x;
+            break;
+          case "bottomLeft":
+            y = -y;
+            x = -x;
+            break;
+        }
+
+        newWidth = width + x;
+        newLong = long + y;
+
+        baseX = width / box.scale.x;
+        baseY = long / box.scale.y;
+
+        box.scale.x = newWidth / baseX;
+
+        box.scale.y = newLong / baseY;
+
+        scale = {
+          x: box.scale.x,
+          y: box.scale.y,
+        };
+        boxWrapper.position.x = positionX;
+        boxWrapper.position.y = positionY;
+        position = {
+          x: positionX,
+          y: positionY,
+        };
+        break;
+      case "side":
+        switch (point.locationType) {
+          case "bottomRight":
+            z = -z;
+            break;
+          case "topLeft":
+            y = -y;
+            break;
+          case "bottomLeft":
+            y = -y;
+            z = -z;
+            break;
+        }
+
+        newHeight = height + z;
+        newLong = long + y;
+
+        baseZ = height / box.scale.z;
+        baseY = long / box.scale.y;
+
+        box.scale.y = newLong / baseY;
+
+        box.scale.z = newHeight / baseZ;
+
+        scale = {
+          y: box.scale.y,
+          z: box.scale.z,
+        };
+        boxWrapper.position.z = positionZ;
+        boxWrapper.position.y = positionY;
+
+        position = {
+          z: positionZ,
+          y: positionY,
+        };
+        break;
+      case "front":
+        switch (point.locationType) {
+          case "bottomRight":
+            z = -z;
+            break;
+          case "topLeft":
+            x = -x;
+            break;
+          case "bottomLeft":
+            x = -x;
+            z = -z;
+            break;
+        }
+
+        newHeight = height + z;
+        newWidth = width + x;
+
+        baseZ = height / box.scale.z;
+        baseX = width / box.scale.x;
+
+        box.scale.x = newWidth / baseX;
+
+        box.scale.z = newHeight / baseZ;
+
+        scale = {
+          x: box.scale.x,
+          z: box.scale.z,
+        };
+        boxWrapper.position.z = positionZ;
+        boxWrapper.position.x = positionX;
+        position = {
+          x: positionX,
+          y: positionY,
+        };
+        break;
+    }
+    this.updateAllPoints(box);
+
+    this._onDrag({
+      position,
+      scale,
+    }, this._type)
   }
   bindDragControl(box, onDrag) {
-
-    const boxWrapper = this._createBoxWrapper(box)
-
-    
+    const boxWrapper = this._createBoxWrapper(box);
 
     const points = this._addPoints(box);
-    
-   
+
+    this._onDrag = onDrag;
+    return;
 
     this._object = box;
-    const dragControls = new DragControls(
-      [boxWrapper],
-      this.camera,
-      this._dom
-    );
+    const dragControls = new DragControls([boxWrapper], this.camera, this._dom);
 
     let oldPointsPosition = null;
 
@@ -281,10 +536,26 @@ export default class Screen {
         // this._updatePoints(
         //   this._computedPointLocation(this._computedBoxSize(event.object))
         // );
-        onDrag(event.object, this._type);
+        const parent = event.object.parent;
+        const position = event.object.position.clone();
+
+        var worldPosition = new THREE.Vector3();
+
+        event.object.getWorldPosition(worldPosition);
+
+        console.log(worldPosition, "---------worldPosition----------");
+
+        event.object.position.set(0, 0, 0);
+
+        event.object.getWorldPosition(worldPosition);
+
+        console.log(worldPosition, "-------new--worldPosition----------");
+        // parent.position.set(worldPosition.x, worldPosition.y, worldPosition.z)
+
+        onDrag(parent, this._type);
         this._render();
       } else {
-        return
+        return;
         const distance = oldPointsPosition.sub(event.object.position);
 
         let newWidth, newLong, newHeight;
