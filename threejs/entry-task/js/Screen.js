@@ -22,7 +22,7 @@ export default class Screen {
 
     this._initControls(render);
     if (type !== "full") {
-      this.camera.zoom = 20;
+      this.camera.zoom = 10;
       this.camera.updateProjectionMatrix();
     }
     this._setRotation();
@@ -30,26 +30,30 @@ export default class Screen {
     this._initRaycaster();
 
     this._bindMouseEvent();
-
-    // const arrowHelper = new THREE.AxesHelper(5);
-    // this.scene.add(arrowHelper);
   }
   _setRotation() {
     if (this._type === "side") {
       this.camera.rotation.set(Math.PI / 2, Math.PI / 2, 0);
     } else if (this._type === "front") {
       this.camera.rotation.set(Math.PI / 2, 0, 0);
+    } else if (this._type === "top") {
+      this.camera.rotation.set(0, 0, 0);
     }
-    this.camera.updateProjectionMatrix();
   }
   _initControls(render) {
     this._render = render;
     this.controls = new OrbitControls(this.camera, this._dom);
+    if (this._type === "full") {
+      this.controls.enablePan = false;
+    } else {
+      this.controls.enableRotate = false;
+    }
     this.controls.addEventListener("change", (data) => {
       if (this._type !== "full") {
-        this.updateAllPoints(this._object, this.camera.zoom);
+        // this.updateAllPoints(this._box, this.camera.zoom);
       }
-      this._setRotation();
+      // this._setRotation();
+      this.setCameraLocation()
       render();
     });
   }
@@ -71,18 +75,11 @@ export default class Screen {
       location.width / 2,
       location.height / 2,
       location.height / -2,
-      -50000,
-      1000000
+      -10000,
+      10000
     );
-    this.camera.up.set(0, 0, 3);
 
-    if (this._type === "top") {
-      this.scene.position.z = -1000;
-    } else if (this._type === "front") {
-      this.scene.position.y = 1000;
-    } else if (this._type === "side") {
-      this.scene.position.x = -1000;
-    }
+    this.setCameraLocation();
   }
   _setPlane() {
     var cameraPoint = new THREE.Vector3();
@@ -109,14 +106,6 @@ export default class Screen {
     this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
     return worldPoint;
   }
-  _initControls(render) {
-    this._render = render;
-    this.controls = new OrbitControls(this.camera, this._dom);
-    this.controls.addEventListener("change", (data) => {
-      this._setRotation();
-      render();
-    });
-  }
   _initRaycaster() {
     this._raycaster = new THREE.Raycaster();
   }
@@ -132,6 +121,7 @@ export default class Screen {
     this._dom.addEventListener("mouseup", (e) => {
       if (e.which !== 1) return;
       this._isMove = false;
+      this._render();
     });
     this._dom.addEventListener("mousemove", (e) => {
       this._onMouseMove(e);
@@ -153,9 +143,9 @@ export default class Screen {
       boxWrapper.position.x = boxWrapper.position.x + x;
       boxWrapper.position.y = boxWrapper.position.y + y;
       boxWrapper.position.z = boxWrapper.position.z + z;
-      this._onDrag({ position : boxWrapper.position }, this._type);
+      this._onDrag({ position: boxWrapper.position }, this._type);
     } else if (this._intersect.name === "points") {
-      this._scaleBox({x, y, z}, this._intersect)
+      this._scaleBox({ x, y, z }, this._intersect);
     }
 
     this.oldMousePosition = currentMousePosition;
@@ -188,14 +178,6 @@ export default class Screen {
     this._isMove = true;
 
     this._intersect = intersects[0].object;
-
-    //将所有的相交的模型的颜色设置为红色，如果只需要将第一个触发事件，那就数组的第一个模型改变颜色即可
-    // for ( var i = 0; i < intersects.length; i++ ) {
-    //   console.log(intersects[ i ].object)
-    //   intersects[ i ].object.position.x = intersects[ i ].object.position.x + 1
-    //   intersects[ i ].object.position.y = intersects[ i ].object.position.y + 1
-    //   this._render()
-    // }
   }
   _updatePoints(pointsArr, zoom) {
     this.scene.getObjectByName("boxWrapper").children.forEach((item) => {
@@ -274,25 +256,25 @@ export default class Screen {
       case "side":
         return [
           {
-            x: 100,
+            x: 10,
             y: y + long / 2,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: 100,
+            x: 10,
             y: y - long / 2,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: 100,
+            x: 10,
             y: y + long / 2,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: 100,
+            x: 10,
             y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
@@ -302,25 +284,25 @@ export default class Screen {
         return [
           {
             x: x + width / 2,
-            y: -10,
+            y: -9,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
             x: x - width / 2,
-            y: -10,
+            y: -9,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
             x: x + width / 2,
-            y: -10,
+            y: -9,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
             x: x - width / 2,
-            y: -10,
+            y: -9,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
@@ -379,7 +361,7 @@ export default class Screen {
   }
   _scaleBox(distance, point) {
     let newWidth, newLong, newHeight;
-    const box = this.scene.getObjectByName("box")
+    const box = this.scene.getObjectByName("box");
     const {
       size: { width, height, long },
     } = this._computedBoxSize(box);
@@ -393,9 +375,9 @@ export default class Screen {
     let positionY = boxWrapper.position.y + y / 2;
     let positionZ = boxWrapper.position.z + z / 2;
 
-    let position = {}
+    let position = {};
 
-    let scale = {}
+    let scale = {};
 
     let baseX, baseY, baseZ;
 
@@ -509,196 +491,47 @@ export default class Screen {
     }
     this.updateAllPoints(box);
 
-    this._onDrag({
-      position,
-      scale,
-    }, this._type)
+    this._onDrag(
+      {
+        position,
+        scale,
+      },
+      this._type
+    );
+  }
+  setCameraLocation() {
+    const boxWrapper = this.scene.getObjectByName('boxWrapper') || {};
+    const position = boxWrapper.position || {x: 0, y: 0, z: 0}
+    const rotation = boxWrapper.rotation || {x: 0, y: 0, z: 0}
+    switch (this._type) {
+      case "top":
+        this.camera.rotation.set(rotation.x, rotation.y, -rotation.z);
+        this.camera.position.set(position.x, position.y, 20);
+        this.camera.up.set(1, 1, 0)
+        break;
+      case "side":
+        this.camera.rotation.set(Math.PI / 2 + rotation.x, Math.PI / 2 + rotation.z, rotation.y);
+        this.camera.position.set(20, position.y || 0, position.z || 0);
+        break;
+      case "front":
+        this.camera.rotation.set(Math.PI / 2 + rotation.x, rotation.y - 1.2 + rotation.z, 0);
+        this.camera.position.set(position.x || 0, -20, position.z || 0);
+        break;
+    }
+
   }
   bindDragControl(box, onDrag) {
     const boxWrapper = this._createBoxWrapper(box);
 
     const points = this._addPoints(box);
 
-    this._onDrag = onDrag;
-    return;
+    this.setCameraLocation();
 
-    this._object = box;
-    const dragControls = new DragControls([boxWrapper], this.camera, this._dom);
-
-    let oldPointsPosition = null;
-
-    dragControls.addEventListener("dragstart", (event) => {
-      oldPointsPosition = event.object.position.clone();
-    });
-
-    dragControls.addEventListener("drag", (event) => {
-      if (event.object.name === "box") {
-        // this._updatePoints(
-        //   this._computedPointLocation(this._computedBoxSize(event.object))
-        // );
-        const parent = event.object.parent;
-        const position = event.object.position.clone();
-
-        var worldPosition = new THREE.Vector3();
-
-        event.object.getWorldPosition(worldPosition);
-
-        console.log(worldPosition, "---------worldPosition----------");
-
-        event.object.position.set(0, 0, 0);
-
-        event.object.getWorldPosition(worldPosition);
-
-        console.log(worldPosition, "-------new--worldPosition----------");
-        // parent.position.set(worldPosition.x, worldPosition.y, worldPosition.z)
-
-        onDrag(parent, this._type);
-        this._render();
-      } else {
-        return;
-        const distance = oldPointsPosition.sub(event.object.position);
-
-        let newWidth, newLong, newHeight;
-        const {
-          size: { width, height, long },
-        } = this._computedBoxSize(object);
-        let x = -distance.x;
-        let y = -distance.y;
-        let z = -distance.z;
-
-        let positionX = object.position.x + x / 2;
-        let positionY = object.position.y + y / 2;
-        let positionZ = object.position.z + z / 2;
-
-        let position = {};
-
-        let scale = {};
-
-        let baseX, baseY, baseZ;
-
-        switch (this._type) {
-          case "top":
-            switch (event.object.locationType) {
-              case "bottomRight":
-                y = -y;
-                break;
-              case "topLeft":
-                x = -x;
-                break;
-              case "bottomLeft":
-                y = -y;
-                x = -x;
-                break;
-            }
-
-            newWidth = width + x;
-            newLong = long + y;
-
-            baseX = width / object.scale.x;
-            baseY = long / object.scale.y;
-
-            object.scale.x = newWidth / baseX;
-
-            object.scale.y = newLong / baseY;
-
-            scale = {
-              x: object.scale.x,
-              y: object.scale.y,
-            };
-            object.position.x = positionX;
-            object.position.y = positionY;
-            position = {
-              x: positionX,
-              y: positionY,
-            };
-            break;
-          case "side":
-            switch (event.object.locationType) {
-              case "bottomRight":
-                z = -z;
-                break;
-              case "topLeft":
-                y = -y;
-                break;
-              case "bottomLeft":
-                y = -y;
-                z = -z;
-                break;
-            }
-
-            newHeight = height + z;
-            newLong = long + y;
-
-            baseZ = height / object.scale.z;
-            baseY = long / object.scale.y;
-
-            object.scale.y = newLong / baseY;
-
-            object.scale.z = newHeight / baseZ;
-
-            scale = {
-              y: object.scale.y,
-              z: object.scale.z,
-            };
-            object.position.z = positionZ;
-            object.position.y = positionY;
-
-            position = {
-              z: positionZ,
-              y: positionY,
-            };
-            break;
-          case "front":
-            switch (event.object.locationType) {
-              case "bottomRight":
-                z = -z;
-                break;
-              case "topLeft":
-                x = -x;
-                break;
-              case "bottomLeft":
-                x = -x;
-                z = -z;
-                break;
-            }
-
-            newHeight = height + z;
-            newWidth = width + x;
-
-            baseZ = height / object.scale.z;
-            baseX = width / object.scale.x;
-
-            object.scale.x = newWidth / baseX;
-
-            object.scale.z = newHeight / baseZ;
-
-            scale = {
-              x: object.scale.x,
-              z: object.scale.z,
-            };
-            object.position.z = positionZ;
-            object.position.x = positionX;
-            position = {
-              x: positionX,
-              y: positionY,
-            };
-            break;
-        }
-        this._updatePoints(
-          this._computedPointLocation({
-            size: {
-              width: newWidth,
-              long: newLong,
-              height: newHeight,
-            },
-            position: object.position.clone(),
-          }).filter((item) => item.locationType !== event.object.locationType)
-        );
-
-        onDrag({ position, scale }, this._type);
-        oldPointsPosition = event.object.position.clone();
-      }
-    });
+    this._onDrag = (...args) => {
+      onDrag.apply(null, args);
+      this._render();
+    };
+    this._box = box;
   }
   add(el) {
     this.scene.add(el);
