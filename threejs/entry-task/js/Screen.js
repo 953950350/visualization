@@ -50,10 +50,9 @@ export default class Screen {
     }
     this.controls.addEventListener("change", (data) => {
       if (this._type !== "full") {
-        // this.updateAllPoints(this._box, this.camera.zoom);
+        this.updateAllPoints(this._box, this.camera.zoom);
       }
-      // this._setRotation();
-      this.setCameraLocation()
+      this._setRotation();
       render();
     });
   }
@@ -75,11 +74,17 @@ export default class Screen {
       location.width / 2,
       location.height / 2,
       location.height / -2,
-      -10000,
-      10000
+      -100,
+      100
     );
 
-    this.setCameraLocation();
+    if (this._type === 'top') {
+      this.camera.position.z = 20
+    } else if (this._type === 'side') {
+      this.camera.position.x = 20
+    } else if (this._type === 'front') {
+      this.camera.position.y = -20
+    }
   }
   _setPlane() {
     var cameraPoint = new THREE.Vector3();
@@ -139,11 +144,14 @@ export default class Screen {
     const z = currentMousePosition.z - this.oldMousePosition.z;
 
     if (this._intersect.name === "box") {
-      const boxWrapper = this.scene.getObjectByName("boxWrapper");
-      boxWrapper.position.x = boxWrapper.position.x + x;
-      boxWrapper.position.y = boxWrapper.position.y + y;
-      boxWrapper.position.z = boxWrapper.position.z + z;
-      this._onDrag({ position: boxWrapper.position }, this._type);
+      const box = this.scene.getObjectByName("box");
+      box.position.x = box.position.x + x;
+      box.position.y = box.position.y + y;
+      box.position.z = box.position.z + z;
+      this.updateAllPoints(box)
+      
+      this._onDrag({ position: box.position }, this._type);
+      this._render()
     } else if (this._intersect.name === "points") {
       this._scaleBox({ x, y, z }, this._intersect);
     }
@@ -161,14 +169,10 @@ export default class Screen {
     // 通过鼠标点的位置和当前相机的矩阵计算出raycaster
     this._raycaster.setFromCamera(this._mouse, this.camera);
 
+    
     // 获取raycaster直线和所有模型相交的数组集合
-    let intersects = this._raycaster.intersectObjects(this.scene.children);
-
-    console.log(
-      intersects.filter(
-        (item) => item.object.name === "box" || item.object.name === "points"
-      )
-    );
+    let intersects = this._raycaster.intersectObjects(this.scene.children, true);
+    console.log(intersects)
     intersects = intersects.filter(
       (item) => item.object.name === "box" || item.object.name === "points"
     );
@@ -312,14 +316,15 @@ export default class Screen {
   }
 
   _computedBoxSize(object) {
-    const box = new THREE.Box3().setFromObject(object);
+    const boxCopy = object.clone();
+    const box = new THREE.Box3().setFromObject(boxCopy);
     const boxSize = box.max.sub(box.min);
     const width = Math.abs(boxSize.x);
     const height = Math.abs(boxSize.z);
     const long = Math.abs(boxSize.y);
 
     // var position = new THREE.Vector3();
-    // object.getWorldPosition(position);
+    // object.getWorldPosition(position)
 
     return {
       size: {
@@ -334,7 +339,7 @@ export default class Screen {
 
   _createBoxWrapper(object) {
     const boxWrapper = new THREE.Object3D();
-    this.add(boxWrapper);
+    
     boxWrapper.position.set(
       object.position.x,
       object.position.y,
@@ -345,14 +350,12 @@ export default class Screen {
       object.rotation.y,
       object.rotation.z
     );
+    this.add(boxWrapper);
+
     object.position.set(0, 0, 0);
     object.rotation.set(0, 0, 0);
 
-    const arrowHelper = new THREE.AxesHelper(10);
-
     boxWrapper.name = "boxWrapper";
-
-    boxWrapper.add(arrowHelper);
 
     boxWrapper.add(object);
 
@@ -499,33 +502,13 @@ export default class Screen {
       this._type
     );
   }
-  setCameraLocation() {
-    const boxWrapper = this.scene.getObjectByName('boxWrapper') || {};
-    const position = boxWrapper.position || {x: 0, y: 0, z: 0}
-    const rotation = boxWrapper.rotation || {x: 0, y: 0, z: 0}
-    switch (this._type) {
-      case "top":
-        this.camera.rotation.set(rotation.x, rotation.y, -rotation.z);
-        this.camera.position.set(position.x, position.y, 20);
-        this.camera.up.set(1, 1, 0)
-        break;
-      case "side":
-        this.camera.rotation.set(Math.PI / 2 + rotation.x, Math.PI / 2 + rotation.z, rotation.y);
-        this.camera.position.set(20, position.y || 0, position.z || 0);
-        break;
-      case "front":
-        this.camera.rotation.set(Math.PI / 2 + rotation.x, rotation.y - 1.2 + rotation.z, 0);
-        this.camera.position.set(position.x || 0, -20, position.z || 0);
-        break;
-    }
-
-  }
   bindDragControl(box, onDrag) {
     const boxWrapper = this._createBoxWrapper(box);
 
     const points = this._addPoints(box);
 
-    this.setCameraLocation();
+    boxWrapper.add(this.camera)
+
 
     this._onDrag = (...args) => {
       onDrag.apply(null, args);

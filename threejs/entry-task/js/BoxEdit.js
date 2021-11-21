@@ -81,12 +81,12 @@ export default class BoxEdit {
           this.screens
             .filter((screen) => screen._type !== current)
             .forEach((screen) => {
-              const boxWrapper = screen.scene.getObjectByName("boxWrapper");
+              // const boxWrapper = screen.scene.getObjectByName("boxWrapper");
               const box = screen.scene.getObjectByName("box");
-              boxWrapper.position.set(
-                position.x || boxWrapper.position.x,
-                position.y || boxWrapper.position.y,
-                position.z || boxWrapper.position.z
+              box.position.set(
+                position.x || box.position.x,
+                position.y || box.position.y,
+                position.z || box.position.z
               );
               if (scale) {
                 box.scale.set(
@@ -94,8 +94,8 @@ export default class BoxEdit {
                   scale.y || box.scale.y,
                   scale.z || box.scale.z
                 );
-                screen.updateAllPoints(box);
               }
+              screen.updateAllPoints(box);
             });
         });
       }
