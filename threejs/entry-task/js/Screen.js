@@ -1,6 +1,10 @@
 import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
-import { OrbitControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
-import { DragControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/DragControls.js";
+import {
+  OrbitControls
+} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
+import {
+  DragControls
+} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/DragControls.js";
 
 export default class Screen {
   scene = null;
@@ -104,6 +108,7 @@ export default class Screen {
     //转设备坐标
     mousePoint.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     mousePoint.y = -((clientY - rect.canvasY) / rect.height) * 2 + 1;
+
     this._raycaster.setFromCamera(mousePoint, this.camera);
     //获取平面
     var screenPlane = this._setPlane();
@@ -153,11 +158,17 @@ export default class Screen {
       box.position.y = box.position.y + y;
       box.position.z = box.position.z + z;
       this.updateAllPoints(box)
-      
-      this._onDrag({ position: box.position }, this._type);
+
+      this._onDrag({
+        position: box.position
+      }, this._type);
       this._render()
     } else if (this._intersect.name === "points") {
-      this._scaleBox({ x, y, z }, this._intersect);
+      this._scaleBox({
+        x,
+        y,
+        z
+      }, this._intersect);
     }
 
     this.oldMousePosition = currentMousePosition;
@@ -173,14 +184,14 @@ export default class Screen {
     // 通过鼠标点的位置和当前相机的矩阵计算出raycaster
     this._raycaster.setFromCamera(this._mouse, this.camera);
 
-    
+
     // 获取raycaster直线和所有模型相交的数组集合
     let intersects = this._raycaster.intersectObjects(this.scene.children, true);
-    
+
     intersects = intersects.filter(
       (item) => item.object.name === "box" || item.object.name === "points"
     );
-    console.log(intersects)
+    // console.log(intersects)
 
     if (!intersects.length) return;
 
@@ -202,7 +213,12 @@ export default class Screen {
       item.position.set(position.x, position.y, position.z);
     });
   }
-  _addPoint({ x, y, z, locationType }) {
+  _addPoint({
+    x,
+    y,
+    z,
+    locationType
+  }) {
     const geometry = new THREE.SphereGeometry(0.7);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffff00,
@@ -229,15 +245,26 @@ export default class Screen {
     );
   }
 
-  _computedPointLocation({ size, position, rotation }) {
-    const { width, height, long } = size;
+  _computedPointLocation({
+    size,
+    position,
+    rotation
+  }) {
+    const {
+      width,
+      height,
+      long
+    } = size;
 
-    const { x, y, z } = position;
+    const {
+      x,
+      y,
+      z
+    } = position;
 
     switch (this._type) {
       case "top":
-        return [
-          {
+        return [{
             x: x + width / 2,
             y: y + long / 2,
             z: 10,
@@ -269,8 +296,7 @@ export default class Screen {
           },
         ];
       case "side":
-        return [
-          {
+        return [{
             x: 10,
             y: y + long / 2,
             z: z + height / 2,
@@ -302,8 +328,7 @@ export default class Screen {
           },
         ];
       case "front":
-        return [
-          {
+        return [{
             x: x + width / 2,
             y: -9,
             z: z + height / 2,
@@ -362,7 +387,7 @@ export default class Screen {
 
   _createBoxWrapper(object) {
     const boxWrapper = new THREE.Object3D();
-    
+
     boxWrapper.position.set(
       object.position.x,
       object.position.y,
@@ -385,7 +410,10 @@ export default class Screen {
     this.boxWrapper = boxWrapper;
     return boxWrapper;
   }
-  _rotationBox({r, distance}, point) {
+  _rotationBox({
+    r,
+    distance
+  }, point) {
     let c2 = Math.pow(distance.x, 2) + Math.pow(distance.y, 2)
     let rotation = Math.acos((2 * Math.pow(r, 2) - c2) / (2 * Math.pow(r, 2)))
 
@@ -398,17 +426,21 @@ export default class Screen {
     }
 
     const rotationDirection = rotationFromType[this._type]
-    
+
     boxWrapper.rotation[rotationDirection] = boxWrapper.rotation[rotationDirection] + (rotation) * (-distance.x / Math.abs(distance.x))
 
-    this._render()
+    this._onDrag({ rotation: boxWrapper.rotation.clone() }, this._type)
 
   }
   _scaleBox(distance, point) {
     let newWidth, newLong, newHeight;
     const box = this.scene.getObjectByName("box");
     const {
-      size: { width, height, long },
+      size: {
+        width,
+        height,
+        long
+      },
     } = this._computedBoxSize(box);
     const boxWrapper = this.scene.getObjectByName("box");
 
@@ -564,8 +596,7 @@ export default class Screen {
     }
     this.updateAllPoints(box);
 
-    this._onDrag(
-      {
+    this._onDrag({
         position,
         scale,
       },

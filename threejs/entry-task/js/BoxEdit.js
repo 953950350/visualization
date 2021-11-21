@@ -77,17 +77,22 @@ export default class BoxEdit {
       if (screen._type === "full") {
         screen._createBoxWrapper(newCube);
       } else {
-        screen.bindDragControl(newCube, ({ position, scale }, current) => {
+        screen.bindDragControl(newCube, ({ position, scale, rotation }, current) => {
           this.screens
             .filter((screen) => screen._type !== current)
             .forEach((screen) => {
-              // const boxWrapper = screen.scene.getObjectByName("boxWrapper");
+              const boxWrapper = screen.scene.getObjectByName("boxWrapper");
               const box = screen.scene.getObjectByName("box");
-              box.position.set(
-                position.x || box.position.x,
-                position.y || box.position.y,
-                position.z || box.position.z
-              );
+              if (rotation) {
+                boxWrapper.rotation.copy(rotation)
+              }
+              if (position) {
+                box.position.set(
+                  position.x || box.position.x,
+                  position.y || box.position.y,
+                  position.z || box.position.z
+                );
+              }
               if (scale) {
                 box.scale.set(
                   scale.x || box.scale.x,
