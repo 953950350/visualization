@@ -109,6 +109,7 @@ export default class Screen {
     var screenPlane = this._setPlane();
     //求交
     this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
+    this.boxWrapper.worldToLocal(worldPoint)
     return worldPoint;
   }
   _initRaycaster() {
