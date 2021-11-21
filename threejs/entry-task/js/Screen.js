@@ -109,7 +109,10 @@ export default class Screen {
     var screenPlane = this._setPlane();
     //求交
     this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
-    this.boxWrapper.worldToLocal(worldPoint)
+
+    const boxWrapper = this.scene.getObjectByName('boxWrapper');
+    boxWrapper.worldToLocal(worldPoint)
+
     return worldPoint;
   }
   _initRaycaster() {
@@ -173,10 +176,11 @@ export default class Screen {
     
     // 获取raycaster直线和所有模型相交的数组集合
     let intersects = this._raycaster.intersectObjects(this.scene.children, true);
-    console.log(intersects)
+    
     intersects = intersects.filter(
       (item) => item.object.name === "box" || item.object.name === "points"
     );
+    console.log(intersects)
 
     if (!intersects.length) return;
 
@@ -257,6 +261,12 @@ export default class Screen {
             z: 10,
             locationType: "bottomLeft",
           },
+          {
+            x: x,
+            y: y + long / 2 + 3,
+            z: 10,
+            locationType: "top",
+          },
         ];
       case "side":
         return [
@@ -283,6 +293,12 @@ export default class Screen {
             y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
+          },
+          {
+            x: 10,
+            y: y,
+            z: z + height / 2 + 3,
+            locationType: "top",
           },
         ];
       case "front":
@@ -311,6 +327,12 @@ export default class Screen {
             z: z - height / 2,
             locationType: "bottomLeft",
           },
+          {
+            x: x,
+            y: -9,
+            z: z + height / 2 + 3,
+            locationType: "top",
+          }
         ];
     }
     return [];
@@ -363,17 +385,64 @@ export default class Screen {
     this.boxWrapper = boxWrapper;
     return boxWrapper;
   }
+  _rotationBox({r, distance}, point) {
+    let c2 = Math.pow(distance.x, 2) + Math.pow(distance.y, 2)
+    let rotation = Math.acos((2 * Math.pow(r, 2) - c2) / (2 * Math.pow(r, 2)))
+
+    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+
+    const rotationFromType = {
+      top: 'z',
+      side: 'x',
+      front: 'y'
+    }
+
+    const rotationDirection = rotationFromType[this._type]
+    
+    boxWrapper.rotation[rotationDirection] = boxWrapper.rotation[rotationDirection] + (rotation) * (-distance.x / Math.abs(distance.x))
+
+    this._render()
+
+  }
   _scaleBox(distance, point) {
     let newWidth, newLong, newHeight;
     const box = this.scene.getObjectByName("box");
     const {
       size: { width, height, long },
     } = this._computedBoxSize(box);
-    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+    const boxWrapper = this.scene.getObjectByName("box");
 
     let x = distance.x;
     let y = distance.y;
     let z = distance.z;
+
+    if (point.locationType === 'top') {
+      const sizeTor = {
+        top: {
+          r: long / 2 + 3,
+          distance: {
+            x,
+            y
+          }
+        },
+        side: {
+          r: height / 2 + 3,
+          distance: {
+            x: y,
+            y: z
+          }
+        },
+        front: {
+          r: height / 2 + 3,
+          distance: {
+            x,
+            y: z
+          }
+        },
+      }
+      this._rotationBox(sizeTor[this._type], point)
+      return
+    }
 
     let positionX = boxWrapper.position.x + x / 2;
     let positionY = boxWrapper.position.y + y / 2;
