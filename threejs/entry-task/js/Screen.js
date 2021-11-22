@@ -419,16 +419,19 @@ export default class Screen {
     const boxWrapper = this.scene.getObjectByName("boxWrapper");
 
     const rotationFromType = {
-      top: 'z',
-      side: 'x',
-      front: 'y'
+      top: 'rotateZ',
+      side: 'rotateX',
+      front: 'rotateY'
     }
 
     const rotationDirection = rotationFromType[this._type]
 
-    boxWrapper.rotation[rotationDirection] = boxWrapper.rotation[rotationDirection] + (rotation) * (-distance.x / Math.abs(distance.x))
+    boxWrapper[rotationDirection]((rotation) * (-distance.x / Math.abs(distance.x)))
 
-    this._onDrag({ rotation: boxWrapper.rotation.clone() }, this._type)
+    this._onDrag({ rotation: {
+      num: (rotation) * (-distance.x / Math.abs(distance.x)),
+      rotationDirection: rotationDirection
+    } }, this._type)
 
   }
   _scaleBox(distance, point) {

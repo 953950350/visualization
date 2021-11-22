@@ -88,7 +88,9 @@ export default class BoxEdit {
                 const boxWrapper = screen.scene.getObjectByName("boxWrapper");
                 const box = screen.scene.getObjectByName("box");
                 if (rotation) {
-                  boxWrapper.rotation.copy(rotation);
+                  // boxWrapper.rotation.copy(rotation);
+                  const { num, rotationDirection } = rotation;
+                  boxWrapper[rotationDirection](num)
                 }
                 if (position) {
                   box.position.set(
