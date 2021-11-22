@@ -3,7 +3,7 @@ import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/lo
 import Screen from "./Screen.js";
 
 export default class BoxEdit {
-  constructor(canvas, boxData, pcdUrl) {
+  constructor(canvas, boxData, domList, pcdUrl, boxChange = () => {}) {
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -12,13 +12,13 @@ export default class BoxEdit {
     renderer.autoClear = false;
     renderer.sortObjects = false;
 
-    const screens = ["full", "top", "side", "front"].map((item) => {
-      const dom = document.querySelector(`.${item}`);
-      return new Screen(dom, this.render.bind(this), item);
+    const screens = domList.map(({ dom, type }) => {
+      return new Screen(dom, this.render.bind(this), type);
     });
 
     this.renderer = renderer;
     this.screens = screens;
+    this._boxChange = boxChange;
 
     this.loaderPCD(pcdUrl);
     this.addBox(boxData);
@@ -65,8 +65,10 @@ export default class BoxEdit {
       alphaTest: 0.5,
     });
     const cube = new THREE.Mesh(geometry, material);
+
+    const { position, scale, rotation, objectType, objectId } = boxData;
+
     cube.name = "box";
-    const { position, scale, rotation } = boxData;
 
     cube.position.set(position.x, position.y, position.z);
     cube.scale.set(scale.x, scale.y, scale.z);
@@ -77,32 +79,36 @@ export default class BoxEdit {
       if (screen._type === "full") {
         screen._createBoxWrapper(newCube);
       } else {
-        screen.bindDragControl(newCube, ({ position, scale, rotation }, current) => {
-          this.screens
-            .filter((screen) => screen._type !== current)
-            .forEach((screen) => {
-              const boxWrapper = screen.scene.getObjectByName("boxWrapper");
-              const box = screen.scene.getObjectByName("box");
-              if (rotation) {
-                boxWrapper.rotation.copy(rotation)
-              }
-              if (position) {
-                box.position.set(
-                  position.x || box.position.x,
-                  position.y || box.position.y,
-                  position.z || box.position.z
-                );
-              }
-              if (scale) {
-                box.scale.set(
-                  scale.x || box.scale.x,
-                  scale.y || box.scale.y,
-                  scale.z || box.scale.z
-                );
-              }
-              screen.updateAllPoints(box);
-            });
-        });
+        screen.bindDragControl(
+          newCube,
+          ({ position, scale, rotation }, current) => {
+            this.screens
+              .filter((screen) => screen._type !== current)
+              .forEach((screen) => {
+                const boxWrapper = screen.scene.getObjectByName("boxWrapper");
+                const box = screen.scene.getObjectByName("box");
+                if (rotation) {
+                  boxWrapper.rotation.copy(rotation);
+                }
+                if (position) {
+                  box.position.set(
+                    position.x || box.position.x,
+                    position.y || box.position.y,
+                    position.z || box.position.z
+                  );
+                }
+                if (scale) {
+                  box.scale.set(
+                    scale.x || box.scale.x,
+                    scale.y || box.scale.y,
+                    scale.z || box.scale.z
+                  );
+                }
+                screen.updateAllPoints(box);
+              });
+            this._boxChange(this.getBoxSizeData());
+          }
+        );
       }
     });
   }
@@ -111,5 +117,21 @@ export default class BoxEdit {
     this.screens.forEach((screen) => screen.update());
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.render();
+  }
+
+  getBoxSizeData() {
+    const scene = this.screens[0].scene;
+    if (!scene) return null;
+    const boxWrapper = scene.getObjectByName("boxWrapper");
+    const box = scene.getObjectByName("box");
+
+    var position = new THREE.Vector3();
+    box.getWorldPosition(position);
+
+    return {
+      position: position,
+      scale: box.scale.clone(),
+      rotation: boxWrapper.rotation.clone(),
+    };
   }
 }

@@ -2,9 +2,6 @@ import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
 import {
   OrbitControls
 } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
-import {
-  DragControls
-} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/DragControls.js";
 
 export default class Screen {
   scene = null;
@@ -25,6 +22,7 @@ export default class Screen {
     this._initCamera(type);
 
     this._initControls(render);
+
     if (type !== "full") {
       this.camera.zoom = 10;
       this.camera.updateProjectionMatrix();
@@ -115,6 +113,7 @@ export default class Screen {
     //求交
     this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
 
+    // 转化为局部坐标
     const boxWrapper = this.scene.getObjectByName('boxWrapper');
     boxWrapper.worldToLocal(worldPoint)
 
@@ -162,7 +161,6 @@ export default class Screen {
       this._onDrag({
         position: box.position
       }, this._type);
-      this._render()
     } else if (this._intersect.name === "points") {
       this._scaleBox({
         x,
@@ -191,7 +189,6 @@ export default class Screen {
     intersects = intersects.filter(
       (item) => item.object.name === "box" || item.object.name === "points"
     );
-    // console.log(intersects)
 
     if (!intersects.length) return;
 
@@ -233,14 +230,16 @@ export default class Screen {
   }
   _addPoints(object) {
     if (this._type === "full") return [];
-    return this._computedPointLocation(this._computedBoxSize(object)).map(
+    const boxSize = this._computedBoxSize(object)
+    return this._computedPointLocation(boxSize).map(
       (item) => this._addPoint(item)
     );
   }
 
   updateAllPoints(object, zoom) {
+    const boxSize = this._computedBoxSize(object)
     this._updatePoints(
-      this._computedPointLocation(this._computedBoxSize(object)),
+      this._computedPointLocation(boxSize),
       zoom
     );
   }
@@ -267,61 +266,61 @@ export default class Screen {
         return [{
             x: x + width / 2,
             y: y + long / 2,
-            z: 10,
+            z: 15,
             locationType: "topRight",
           },
           {
             x: x - width / 2,
             y: y + long / 2,
-            z: 10,
+            z: 15,
             locationType: "topLeft",
           },
           {
             x: x + width / 2,
             y: y - long / 2,
-            z: 10,
+            z: 15,
             locationType: "bottomRight",
           },
           {
             x: x - width / 2,
             y: y - long / 2,
-            z: 10,
+            z: 15,
             locationType: "bottomLeft",
           },
           {
             x: x,
             y: y + long / 2 + 3,
-            z: 10,
+            z: 15,
             locationType: "top",
           },
         ];
       case "side":
         return [{
-            x: 10,
+            x: 19,
             y: y + long / 2,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: 10,
+            x: 19,
             y: y - long / 2,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: 10,
+            x: 19,
             y: y + long / 2,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: 10,
+            x: 19,
             y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
           {
-            x: 10,
+            x: 19,
             y: y,
             z: z + height / 2 + 3,
             locationType: "top",
@@ -330,31 +329,31 @@ export default class Screen {
       case "front":
         return [{
             x: x + width / 2,
-            y: -9,
+            y: -19,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
             x: x - width / 2,
-            y: -9,
+            y: -19,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
             x: x + width / 2,
-            y: -9,
+            y: -19,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
             x: x - width / 2,
-            y: -9,
+            y: -19,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
           {
             x: x,
-            y: -9,
+            y: -19,
             z: z + height / 2 + 3,
             locationType: "top",
           }
@@ -370,9 +369,6 @@ export default class Screen {
     const width = Math.abs(boxSize.x);
     const height = Math.abs(boxSize.z);
     const long = Math.abs(boxSize.y);
-
-    // var position = new THREE.Vector3();
-    // object.getWorldPosition(position)
 
     return {
       size: {
@@ -609,7 +605,7 @@ export default class Screen {
   bindDragControl(box, onDrag) {
     const boxWrapper = this._createBoxWrapper(box);
 
-    const points = this._addPoints(box);
+    this._addPoints(box);
 
     boxWrapper.add(this.camera)
 
@@ -625,7 +621,14 @@ export default class Screen {
   }
   update() {
     const location = this.getLocation();
-    this.camera.aspect = location.width / location.height;
+    if (this._type === 'full') {
+      this.camera.aspect = location.width / location.height;
+    } else {
+      this.camera.left = location.width / -2
+      this.camera.right = location.width / 2
+      this.camera.top = location.height / 2
+      this.camera.bottom = location.height / -2
+    }
     this.camera.updateProjectionMatrix();
   }
   getLocation() {

@@ -24,26 +24,55 @@
         width: 100%;
         height: calc(100% - 300px);
       }
-      .wrapper {
+      .container {
         width: 100%;
         height: 300px;
         display: flex;
+        margin-left: -5px;
+      }
+      .box-wrapper {
+        height: 100%;
+        width: calc(33.333% - 5px);
+        margin-left: 5px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
       }
       .box-item {
-        height: 100%;
-        width: 33.333%;
+        width: 100%;
+        flex: 1;
       }
 
+      .box-title {
+        color: #fff;
+        margin: 0;
+        background: #24303b;
+        height: 22px;
+        width: 100%;
+        line-height: 22px;
+        text-align: center;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+      }
     </style>
   </head>
 
   <body>
     <canvas id="canvas"></canvas>
     <div class="full"></div>
-    <div class="wrapper">
-      <div class="top box-item"></div>
-      <div class="side box-item"></div>
-      <div class="front box-item"></div>
+    <div class="container">
+      <div class="box-wrapper">
+        <p class="box-title">TOP</p>
+        <div class="top box-item"></div>
+      </div>
+      <div class="box-wrapper">
+        <p class="box-title">SIDE</p>
+        <div class="side box-item"></div>
+      </div>
+      <div class="box-wrapper">
+        <p class="box-title">FRONT</p>
+        <div class="front box-item"></div>
+      </div>
     </div>
     <script type="module">
       import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
@@ -52,30 +81,41 @@
       import { LightProbeGenerator } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/lights/LightProbeGenerator.js";
       import { TransformControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/TransformControls.js";
       import { PCDLoader } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/loaders/PCDLoader.js";
-      import BoxEdit from './js/BoxEdit.js'
+      import BoxEdit from "./js/BoxEdit.js";
 
       const data = {
-          position: {
-            x: -8.400349855422974,
-            y: 1.981928288936615,
-            z: -1.0848441570997238,
-          },
-          scale: {
-            x: 2.1843811464309697,
-            y: 5.634169597625732,
-            z: 1.470538069009781,
-          },
-          rotation: { x: 0, y: 0, z: Math.PI / 2, _order: "XYZ" },
-          objectType: "Car",
-          objectId: "1",
-        }
+        position: {
+          x: -8.400349855422974,
+          y: 1.981928288936615,
+          z: -1.0848441570997238,
+        },
+        scale: {
+          x: 2.1843811464309697,
+          y: 5.634169597625732,
+          z: 1.470538069009781,
+        },
+        rotation: { x: 0, y: 0, z: Math.PI / 2, _order: "XYZ" },
+        objectType: "Car",
+        objectId: "1",
+      };
 
       function main() {
         const canvas = document.getElementById("canvas");
 
-        new BoxEdit(canvas, data, '../asstes/example.pcd')
+        const domList = ["full", "top", "side", "front"].map((item) => {
+          return {
+            dom: document.querySelector(`.${item}`),
+            type: item
+          };
+        });
+
+        const boxChange = (data) => {
+          // console.log(data)
+        }
+        const boxEdit = new BoxEdit(canvas, data, domList, "../asstes/example.pcd", boxChange);
+
       }
-      window.addEventListener("load", main)
+      window.addEventListener("load", main);
     </script>
   </body>
 </html>
