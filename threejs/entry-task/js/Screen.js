@@ -414,6 +414,9 @@ export default class Screen {
     r,
     distance
   }, point) {
+    if (!distance.x || !distance.y) {
+      return
+    }
     let c2 = Math.pow(distance.x, 2) + Math.pow(distance.y, 2)
     let rotation = Math.acos((2 * Math.pow(r, 2) - c2) / (2 * Math.pow(r, 2)))
 
