@@ -66,7 +66,7 @@ export default class BoxEdit {
     });
     const cube = new THREE.Mesh(geometry, material);
 
-    const { position, scale, rotation, objectType, objectId } = boxData;
+    const { position, scale, rotation } = boxData;
 
     cube.name = "box";
 
@@ -81,34 +81,25 @@ export default class BoxEdit {
       } else {
         screen.bindDragControl(
           newCube,
-          ({ position, scale, rotation }, current) => {
-            this.screens
-              .filter((screen) => screen._type !== current)
-              .forEach((screen) => {
-                const boxWrapper = screen.scene.getObjectByName("boxWrapper");
-                const box = screen.scene.getObjectByName("box");
-                if (rotation) {
-                  // boxWrapper.rotation.copy(rotation);
-                  const { num, rotationDirection } = rotation;
-                  boxWrapper[rotationDirection](num)
-                }
-                if (position) {
-                  box.position.set(
-                    position.x || box.position.x,
-                    position.y || box.position.y,
-                    position.z || box.position.z
-                  );
-                }
-                if (scale) {
-                  box.scale.set(
-                    scale.x || box.scale.x,
-                    scale.y || box.scale.y,
-                    scale.z || box.scale.z
-                  );
-                }
-                screen.updateAllPoints(box);
-              });
+          ({ position, scale, rotation }) => {
+            this.screens.forEach((screen) => {
+              if (rotation) {
+                screen.rotationBox(rotation);
+                return;
+              }
+              if (position) {
+                screen.moveBox(position);
+              }
+              if (scale) {
+                screen.scaleBox(scale, position);
+              }
+              screen.updateAllPoints();
+            });
+            this.render();
             this._boxChange(this.getBoxSizeData());
+          },
+          () => {
+            this.screens.forEach((screen) => screen.resetLocalPosition());
           }
         );
       }

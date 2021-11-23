@@ -1,7 +1,5 @@
 import * as THREE from "https://cdn.skypack.dev/three@0.134.0";
-import {
-  OrbitControls
-} from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
+import { OrbitControls } from "https://cdn.skypack.dev/three@0.134.0/examples/jsm/controls/OrbitControls.js";
 
 export default class Screen {
   scene = null;
@@ -18,10 +16,11 @@ export default class Screen {
     this.scene = new THREE.Scene();
     this._dom = dom;
     this._type = type;
+    this._render = render;
 
     this._initCamera(type);
 
-    this._initControls(render);
+    this._initControls();
 
     if (type !== "full") {
       this.camera.zoom = 10;
@@ -42,8 +41,7 @@ export default class Screen {
       this.camera.rotation.set(0, 0, 0);
     }
   }
-  _initControls(render) {
-    this._render = render;
+  _initControls() {
     this.controls = new OrbitControls(this.camera, this._dom);
     if (this._type === "full") {
       this.controls.enablePan = false;
@@ -52,10 +50,10 @@ export default class Screen {
     }
     this.controls.addEventListener("change", (data) => {
       if (this._type !== "full") {
-        this.updateAllPoints(this._box, this.camera.zoom);
+        this.updateAllPoints(this.camera.zoom);
       }
       this._setRotation();
-      render();
+      this._render();
     });
   }
   _initCamera() {
@@ -76,17 +74,11 @@ export default class Screen {
       location.width / 2,
       location.height / 2,
       location.height / -2,
-      -100,
-      100
+      -2000,
+      2000
     );
 
-    if (this._type === 'top') {
-      this.camera.position.z = 20
-    } else if (this._type === 'side') {
-      this.camera.position.x = 20
-    } else if (this._type === 'front') {
-      this.camera.position.y = -20
-    }
+    this._setCameraPosition();
   }
   _setPlane() {
     var cameraPoint = new THREE.Vector3();
@@ -114,13 +106,29 @@ export default class Screen {
     this._raycaster.ray.intersectPlane(screenPlane, worldPoint);
 
     // 转化为局部坐标
-    const boxWrapper = this.scene.getObjectByName('boxWrapper');
-    boxWrapper.worldToLocal(worldPoint)
+    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+    boxWrapper.worldToLocal(worldPoint);
 
     return worldPoint;
   }
   _initRaycaster() {
     this._raycaster = new THREE.Raycaster();
+  }
+  _setCameraPosition(position = {}) {
+    const { x = 0, y = 0, z = 0 } = position;
+    if (this._type === "top") {
+      this.camera.position.z = 500;
+      this.camera.position.x = x;
+      this.camera.position.y = y;
+    } else if (this._type === "side") {
+      this.camera.position.x = 500;
+      this.camera.position.y = y;
+      this.camera.position.z = z;
+    } else if (this._type === "front") {
+      this.camera.position.y = -500;
+      this.camera.position.x = x;
+      this.camera.position.z = z;
+    }
   }
   _bindMouseEvent() {
     if (this._type === "full") return;
@@ -134,11 +142,29 @@ export default class Screen {
     this._dom.addEventListener("mouseup", (e) => {
       if (e.which !== 1) return;
       this._isMove = false;
-      this._render();
+      setTimeout(() => {
+        this._onEndDrag();
+        this._render();
+      }, 100);
     });
     this._dom.addEventListener("mousemove", (e) => {
       this._onMouseMove(e);
     });
+  }
+  resetLocalPosition() {
+    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+    const box = this.scene.getObjectByName("box");
+
+    let position = new THREE.Vector3();
+
+    box.getWorldPosition(position);
+
+    boxWrapper.position.copy(position);
+
+    box.position.set(0, 0, 0);
+
+    this._setCameraPosition();
+    this.updateAllPoints();
   }
   _onMouseMove(event) {
     if (!this._isMove || event.which !== 1) return;
@@ -152,24 +178,27 @@ export default class Screen {
     const z = currentMousePosition.z - this.oldMousePosition.z;
 
     if (this._intersect.name === "box") {
-      const box = this.scene.getObjectByName("box");
-      box.position.x = box.position.x + x;
-      box.position.y = box.position.y + y;
-      box.position.z = box.position.z + z;
-      this.updateAllPoints(box)
-
-      this._onDrag({
-        position: box.position
-      }, this._type);
+      this._onDrag({ position: { x, y, z } });
     } else if (this._intersect.name === "points") {
-      this._scaleBox({
-        x,
-        y,
-        z
-      }, this._intersect);
+      this._computedScale(
+        {
+          x,
+          y,
+          z,
+        },
+        this._intersect
+      );
     }
 
     this.oldMousePosition = currentMousePosition;
+  }
+  moveBox({ x, y, z }) {
+    const box = this.scene.getObjectByName("box");
+    box.position.set(
+      box.position.x + x,
+      box.position.y + y,
+      box.position.z + z
+    );
   }
   _onMouseDown(event) {
     if (event.which !== 1) return;
@@ -182,9 +211,11 @@ export default class Screen {
     // 通过鼠标点的位置和当前相机的矩阵计算出raycaster
     this._raycaster.setFromCamera(this._mouse, this.camera);
 
-
     // 获取raycaster直线和所有模型相交的数组集合
-    let intersects = this._raycaster.intersectObjects(this.scene.children, true);
+    let intersects = this._raycaster.intersectObjects(
+      this.scene.children,
+      true
+    );
 
     intersects = intersects.filter(
       (item) => item.object.name === "box" || item.object.name === "points"
@@ -210,12 +241,7 @@ export default class Screen {
       item.position.set(position.x, position.y, position.z);
     });
   }
-  _addPoint({
-    x,
-    y,
-    z,
-    locationType
-  }) {
+  _addPoint({ x, y, z, locationType }) {
     const geometry = new THREE.SphereGeometry(0.7);
     const material = new THREE.MeshBasicMaterial({
       color: 0xffff00,
@@ -230,104 +256,93 @@ export default class Screen {
   }
   _addPoints(object) {
     if (this._type === "full") return [];
-    const boxSize = this._computedBoxSize(object)
-    return this._computedPointLocation(boxSize).map(
-      (item) => this._addPoint(item)
+    const boxSize = this._computedBoxSize(object);
+    return this._computedPointLocation(boxSize).map((item) =>
+      this._addPoint(item)
     );
   }
 
-  updateAllPoints(object, zoom) {
-    const boxSize = this._computedBoxSize(object)
-    this._updatePoints(
-      this._computedPointLocation(boxSize),
-      zoom
-    );
+  updateAllPoints(zoom) {
+    const box = this.scene.getObjectByName('box');
+    const boxSize = this._computedBoxSize(box);
+    this._updatePoints(this._computedPointLocation(boxSize), zoom);
   }
 
-  _computedPointLocation({
-    size,
-    position,
-    rotation
-  }) {
-    const {
-      width,
-      height,
-      long
-    } = size;
+  _computedPointLocation({ size, position }) {
+    const { width, height, long } = size;
 
-    const {
-      x,
-      y,
-      z
-    } = position;
+    const { x, y, z } = position;
 
     switch (this._type) {
       case "top":
-        return [{
+        return [
+          {
             x: x + width / 2,
             y: y + long / 2,
-            z: 15,
+            z: 100,
             locationType: "topRight",
           },
           {
             x: x - width / 2,
             y: y + long / 2,
-            z: 15,
+            z: 100,
             locationType: "topLeft",
           },
           {
             x: x + width / 2,
             y: y - long / 2,
-            z: 15,
+            z: 100,
             locationType: "bottomRight",
           },
           {
             x: x - width / 2,
             y: y - long / 2,
-            z: 15,
+            z: 100,
             locationType: "bottomLeft",
           },
           {
             x: x,
-            y: y + long / 2 + 3,
-            z: 15,
+            y: y + long / 2 + ( 3 / this.camera.zoom) * 10,
+            z: 100,
             locationType: "top",
           },
         ];
       case "side":
-        return [{
-            x: 19,
+        return [
+          {
+            x: 100,
             y: y + long / 2,
             z: z + height / 2,
             locationType: "topRight",
           },
           {
-            x: 19,
+            x: 100,
             y: y - long / 2,
             z: z + height / 2,
             locationType: "topLeft",
           },
           {
-            x: 19,
+            x: 100,
             y: y + long / 2,
             z: z - height / 2,
             locationType: "bottomRight",
           },
           {
-            x: 19,
+            x: 100,
             y: y - long / 2,
             z: z - height / 2,
             locationType: "bottomLeft",
           },
           {
-            x: 19,
+            x: 100,
             y: y,
-            z: z + height / 2 + 3,
+            z: z + height / 2 + ( 3 / this.camera.zoom) * 10,
             locationType: "top",
           },
         ];
       case "front":
-        return [{
+        return [
+          {
             x: x + width / 2,
             y: -19,
             z: z + height / 2,
@@ -354,9 +369,9 @@ export default class Screen {
           {
             x: x,
             y: -19,
-            z: z + height / 2 + 3,
+            z: z + height / 2 + ( 3 / this.camera.zoom) * 10,
             locationType: "top",
-          }
+          },
         ];
     }
     return [];
@@ -401,88 +416,84 @@ export default class Screen {
 
     boxWrapper.name = "boxWrapper";
 
+    const axesHelper = new THREE.AxesHelper(20);
+    boxWrapper.add(axesHelper);
+
     boxWrapper.add(object);
 
     this.boxWrapper = boxWrapper;
     return boxWrapper;
   }
-  _rotationBox({
-    r,
-    distance
-  }, point) {
+  _computedRotation({ r, distance }, point) {
     if (!distance.x || !distance.y) {
-      return
+      return;
     }
-    let c2 = Math.pow(distance.x, 2) + Math.pow(distance.y, 2)
-    let rotation = Math.acos((2 * Math.pow(r, 2) - c2) / (2 * Math.pow(r, 2)))
-
-    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+    let c2 = Math.pow(distance.x, 2) + Math.pow(distance.y, 2);
+    let rotation = Math.acos((2 * Math.pow(r, 2) - c2) / (2 * Math.pow(r, 2)));
 
     const rotationFromType = {
-      top: 'rotateZ',
-      side: 'rotateX',
-      front: 'rotateY'
-    }
+      top: "rotateZ",
+      side: "rotateX",
+      front: "rotateY",
+    };
 
-    const rotationDirection = rotationFromType[this._type]
+    const rotationDirection = rotationFromType[this._type];
 
-    boxWrapper[rotationDirection]((rotation) * (-distance.x / Math.abs(distance.x)))
-
-    this._onDrag({ rotation: {
-      num: (rotation) * (-distance.x / Math.abs(distance.x)),
-      rotationDirection: rotationDirection
-    } }, this._type)
-
+    this._onDrag(
+      {
+        rotation: {
+          num: rotation * (-distance.x / Math.abs(distance.x)),
+          rotationDirection: rotationDirection,
+        },
+      }
+    );
   }
-  _scaleBox(distance, point) {
+  rotationBox({ num, rotationDirection}) {
+    const boxWrapper = this.scene.getObjectByName("boxWrapper");
+    boxWrapper[rotationDirection](num)
+  }
+  _computedScale(distance, point) {
     let newWidth, newLong, newHeight;
     const box = this.scene.getObjectByName("box");
     const {
-      size: {
-        width,
-        height,
-        long
-      },
+      size: { width, height, long },
     } = this._computedBoxSize(box);
-    const boxWrapper = this.scene.getObjectByName("box");
 
-    let x = distance.x;
-    let y = distance.y;
-    let z = distance.z;
+    let { x, y, z } = distance;
 
-    if (point.locationType === 'top') {
+    if (point.locationType === "top") {
       const sizeTor = {
         top: {
           r: long / 2 + 3,
           distance: {
             x,
-            y
-          }
+            y,
+          },
         },
         side: {
           r: height / 2 + 3,
           distance: {
             x: y,
-            y: z
-          }
+            y: z,
+          },
         },
         front: {
           r: height / 2 + 3,
           distance: {
             x,
-            y: z
-          }
+            y: z,
+          },
         },
-      }
-      this._rotationBox(sizeTor[this._type], point)
-      return
+      };
+      this._computedRotation(sizeTor[this._type], point);
+      return;
     }
 
-    let positionX = boxWrapper.position.x + x / 2;
-    let positionY = boxWrapper.position.y + y / 2;
-    let positionZ = boxWrapper.position.z + z / 2;
-
-    let position = {};
+    let position = {
+      x: x / 2,
+      y: y / 2,
+      z: z / 2,
+    };
 
     let scale = {};
 
@@ -517,12 +528,6 @@ export default class Screen {
           x: box.scale.x,
           y: box.scale.y,
         };
-        boxWrapper.position.x = positionX;
-        boxWrapper.position.y = positionY;
-        position = {
-          x: positionX,
-          y: positionY,
-        };
         break;
       case "side":
         switch (point.locationType) {
@@ -551,13 +556,6 @@ export default class Screen {
         scale = {
           y: box.scale.y,
           z: box.scale.z,
-        };
-        boxWrapper.position.z = positionZ;
-        boxWrapper.position.y = positionY;
-
-        position = {
-          z: positionZ,
-          y: positionY,
         };
         break;
       case "front":
@@ -588,35 +586,41 @@ export default class Screen {
           x: box.scale.x,
           z: box.scale.z,
         };
-        boxWrapper.position.z = positionZ;
-        boxWrapper.position.x = positionX;
-        position = {
-          x: positionX,
-          y: positionY,
-        };
+
         break;
     }
-    this.updateAllPoints(box);
 
-    this._onDrag({
+    this._onDrag(
+      {
         position,
         scale,
       },
-      this._type
     );
   }
-  bindDragControl(box, onDrag) {
+  scaleBox({ x, y, z }, position) {
+    const box = this.scene.getObjectByName("box");
+    box.scale.set(
+      x || box.scale.x,
+      y || box.scale.y,
+      z || box.scale.z
+    );
+    this._setCameraPosition({
+      x: this.camera.position.x + position.x,
+      y: this.camera.position.y + position.y,
+      z: this.camera.position.z + position.z
+    })
+  }
+  bindDragControl(box, onDrag, onEndDrag) {
     const boxWrapper = this._createBoxWrapper(box);
 
     this._addPoints(box);
 
-    boxWrapper.add(this.camera)
+    boxWrapper.add(this.camera);
 
-
-    this._onDrag = (...args) => {
-      onDrag.apply(null, args);
-      this._render();
+    this._onDrag = (data) => {
+      onDrag.call(null, data);
     };
+    this._onEndDrag = onEndDrag;
     this._box = box;
   }
   add(el) {
@@ -624,13 +628,13 @@ export default class Screen {
   }
   update() {
     const location = this.getLocation();
-    if (this._type === 'full') {
+    if (this._type === "full") {
       this.camera.aspect = location.width / location.height;
     } else {
-      this.camera.left = location.width / -2
-      this.camera.right = location.width / 2
-      this.camera.top = location.height / 2
-      this.camera.bottom = location.height / -2
+      this.camera.left = location.width / -2;
+      this.camera.right = location.width / 2;
+      this.camera.top = location.height / 2;
+      this.camera.bottom = location.height / -2;
     }
     this.camera.updateProjectionMatrix();
   }
