@@ -177,17 +177,16 @@ export default class Screen {
     const y = currentMousePosition.y - this.oldMousePosition.y;
     const z = currentMousePosition.z - this.oldMousePosition.z;
 
+    const distance = { x, y, z }
+
     if (this._intersect.name === "box") {
-      this._onDrag({ position: { x, y, z } });
+      this._onDrag({ position: distance });
     } else if (this._intersect.name === "points") {
-      this._computedScale(
-        {
-          x,
-          y,
-          z,
-        },
-        this._intersect
-      );
+      if (this._intersect.locationType === 'top') {
+        this._computedRotation(distance);
+      } else {
+        this._computedScale(distance, this._intersect);
+      }
     }
 
     this.oldMousePosition = currentMousePosition;
@@ -424,7 +423,36 @@ export default class Screen {
     this.boxWrapper = boxWrapper;
     return boxWrapper;
   }
-  _computedRotation({ r, distance }, point) {
+  _computedRotation({ x, y, z }) {
+    const box = this.scene.getObjectByName("box");
+    const {
+      size: { height, long },
+    } = this._computedBoxSize(box);
+
+    const sizeTor = {
+      top: {
+        r: long / 2 + 3,
+        distance: {
+          x,
+          y,
+        },
+      },
+      side: {
+        r: height / 2 + 3,
+        distance: {
+          x: y,
+          y: z,
+        },
+      },
+      front: {
+        r: height / 2 + 3,
+        distance: {
+          x,
+          y: z,
+        },
+      },
+    };
+    const { r, distance } = sizeTor[this._type]
     if (!distance.x || !distance.y) {
       return;
     }
@@ -452,42 +480,11 @@ export default class Screen {
     const boxWrapper = this.scene.getObjectByName("boxWrapper");
     boxWrapper[rotationDirection](num)
   }
-  _computedScale(distance, point) {
-    let newWidth, newLong, newHeight;
+  _computedScale({ x, y, z }, point) {
     const box = this.scene.getObjectByName("box");
     const {
       size: { width, height, long },
     } = this._computedBoxSize(box);
-
-    let { x, y, z } = distance;
-
-    if (point.locationType === "top") {
-      const sizeTor = {
-        top: {
-          r: long / 2 + 3,
-          distance: {
-            x,
-            y,
-          },
-        },
-        side: {
-          r: height / 2 + 3,
-          distance: {
-            x: y,
-            y: z,
-          },
-        },
-        front: {
-          r: height / 2 + 3,
-          distance: {
-            x,
-            y: z,
-          },
-        },
-      };
-      this._computedRotation(sizeTor[this._type], point);
-      return;
-    }
 
     let position = {
       x: x / 2,
@@ -495,105 +492,91 @@ export default class Screen {
       z: z / 2,
     };
 
-    let scale = {};
-
-    let baseX, baseY, baseZ;
-
-    switch (this._type) {
-      case "top":
-        switch (point.locationType) {
-          case "bottomRight":
-            y = -y;
-            break;
-          case "topLeft":
-            x = -x;
-            break;
-          case "bottomLeft":
-            y = -y;
-            x = -x;
-            break;
+    const threeCoordinateToScreen = {
+      top: {
+        coordinate: {
+          x: x,
+          y: y
+        },
+        size: {
+          x: width,
+          y: long
+        },
+        baseScale: {
+          x: width / box.scale.x,
+          y: long / box.scale.y
         }
-
-        newWidth = width + x;
-        newLong = long + y;
-
-        baseX = width / box.scale.x;
-        baseY = long / box.scale.y;
-
-        box.scale.x = newWidth / baseX;
-
-        box.scale.y = newLong / baseY;
-
-        scale = {
-          x: box.scale.x,
-          y: box.scale.y,
-        };
-        break;
-      case "side":
-        switch (point.locationType) {
-          case "bottomRight":
-            z = -z;
-            break;
-          case "topLeft":
-            y = -y;
-            break;
-          case "bottomLeft":
-            y = -y;
-            z = -z;
-            break;
+      },
+      side: {
+        coordinate: {
+          x: y,
+          y: z
+        },
+        size: {
+          x: long,
+          y: height
+        },
+        baseScale: {
+          x: long / box.scale.y,
+          y: height / box.scale.z
         }
-
-        newHeight = height + z;
-        newLong = long + y;
-
-        baseZ = height / box.scale.z;
-        baseY = long / box.scale.y;
-
-        box.scale.y = newLong / baseY;
-
-        box.scale.z = newHeight / baseZ;
-
-        scale = {
-          y: box.scale.y,
-          z: box.scale.z,
-        };
-        break;
-      case "front":
-        switch (point.locationType) {
-          case "bottomRight":
-            z = -z;
-            break;
-          case "topLeft":
-            x = -x;
-            break;
-          case "bottomLeft":
-            x = -x;
-            z = -z;
-            break;
+      },
+      front: {
+        coordinate: {
+          x: x,
+          y: z
+        },
+        size: {
+          x: width,
+          y: height
+        },
+        baseScale: {
+          x: width / box.scale.x,
+          y: height / box.scale.z
         }
+      }
+    }
 
-        newHeight = height + z;
-        newWidth = width + x;
+    const screenCoordinate = threeCoordinateToScreen[this._type];
 
-        baseZ = height / box.scale.z;
-        baseX = width / box.scale.x;
-
-        box.scale.x = newWidth / baseX;
-
-        box.scale.z = newHeight / baseZ;
-
-        scale = {
-          x: box.scale.x,
-          z: box.scale.z,
-        };
-
+    switch (point.locationType) {
+      case "bottomRight":
+        screenCoordinate.coordinate.y = -screenCoordinate.coordinate.y;
         break;
+      case "topLeft":
+        screenCoordinate.coordinate.x = -screenCoordinate.coordinate.x;
+        break;
+      case "bottomLeft":
+        screenCoordinate.coordinate.y = -screenCoordinate.coordinate.y;
+        screenCoordinate.coordinate.x = -screenCoordinate.coordinate.x;
+        break;
+    }
+
+    const newWidth = screenCoordinate.size.x + screenCoordinate.coordinate.x
+    const newHeight = screenCoordinate.size.y + screenCoordinate.coordinate.y
+
+    const scaleX = newWidth / screenCoordinate.baseScale.x
+    const scaleY = newHeight / screenCoordinate.baseScale.y
+
+    const screenScaleToWorld = {
+      top: {
+        x: scaleX,
+        y: scaleY
+      },
+      side: {
+        y: scaleX,
+        z: scaleY
+      },
+      front: {
+        x: scaleX,
+        z: scaleY
+      }
     }
 
     this._onDrag(
       {
         position,
-        scale,
+        scale: screenScaleToWorld[this._type],
       },
     );
   }
